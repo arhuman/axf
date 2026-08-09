@@ -1,0 +1,20 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:55555555-5555-4555-8555-555555555555",
+    "name": "ref-without-uri"
+  },
+  "assets": [
+    {
+      "name": "github-token",
+      "kind": "ref",
+      "ownerSignature": {
+        "algorithm": "ed25519",
+        "canonicalization": "JCS-RFC8785",
+        "signedAt": "2026-08-09T10:00:00Z",
+        "value": "base64:MEQCIBx7...=="
+      }
+    }
+  ]
+}

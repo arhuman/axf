@@ -1,0 +1,37 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:33333333-3333-4333-8333-333333333333",
+    "name": "duplicate-assets",
+    "owner": {
+      "keyType": "ed25519",
+      "publicKeyFingerprint": "sha256:aa",
+      "recoveryKeyFingerprint": "sha256:bb"
+    }
+  },
+  "assets": [
+    {
+      "name": "github-token",
+      "kind": "ref",
+      "uri": "keychain://axf/github-token",
+      "ownerSignature": {
+        "algorithm": "ed25519",
+        "canonicalization": "JCS-RFC8785",
+        "signedAt": "2026-08-09T10:00:00Z",
+        "value": "base64:MEQCIBx7...=="
+      }
+    },
+    {
+      "name": "github-token",
+      "kind": "ref",
+      "uri": "keychain://attacker/github-token",
+      "ownerSignature": {
+        "algorithm": "ed25519",
+        "canonicalization": "JCS-RFC8785",
+        "signedAt": "2026-08-09T10:00:01Z",
+        "value": "base64:MEQCIBx8...=="
+      }
+    }
+  ]
+}

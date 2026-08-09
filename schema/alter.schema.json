@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://axf.doolta.com/schema/v0/alter.schema.json",
+  "title": "AXF Alter",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata"],
+  "$defs": {
+    "hook": {
+      "type": "object",
+      "required": ["capability", "action"],
+      "properties": {
+        "capability": { "type": "string" },
+        "action": { "type": "string" }
+      },
+      "patternProperties": { "^x-[a-z0-9-]+$": {} },
+      "additionalProperties": false
+    },
+    "detachedSignature": {
+      "type": "object",
+      "required": ["algorithm", "canonicalization", "signedAt", "value"],
+      "properties": {
+        "algorithm": { "enum": ["ed25519"] },
+        "canonicalization": { "enum": ["JCS-RFC8785"] },
+        "signedAt": { "type": "string", "format": "date-time" },
+        "value": { "type": "string" }
+      },
+      "patternProperties": { "^x-[a-z0-9-]+$": {} },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "apiVersion": { "const": "axf/v0" },
+    "kind": { "const": "Alter" },
+    "metadata": {
+      "type": "object",
+      "required": ["id", "name", "owner"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^urn:axf:alter:[0-9a-f-]{36}$" },
+        "name": { "type": "string", "minLength": 1 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "owner": {
+          "type": "object",
+          "description": "Key generated independently for THIS Alter only. Never derived from a shared master key and never reused across distinct pseudonymous Alters: either would re-link them.",
+          "required": ["keyType", "publicKeyFingerprint"],
+          "properties": {
+            "keyType": { "enum": ["ed25519"] },
+            "publicKeyFingerprint": { "type": "string" },
+            "recoveryKeyFingerprint": {
+              "type": "string",
+              "description": "Optional. Fingerprint of an independent, Alter-scoped recovery key (BIP39 mnemonic generated once at creation, never persisted). If absent, tooling MUST warn when creating an inline Asset."
+            },
+            "status": {
+              "enum": ["active", "revoked", "transferred"],
+              "default": "active",
+              "description": "MUST be readable without consulting the key event log."
+            },
+            "keyEventLogUri": {
+              "type": "string",
+              "description": "Reference to the external, independently signed log of rotation/transfer/revocation/recovery events. Never embedded inline."
+            }
+          },
+          "patternProperties": { "^x-[a-z0-9-]+$": {} },
+          "additionalProperties": false
+        }
+      },
+      "patternProperties": { "^x-[a-z0-9-]+$": {} },
+      "additionalProperties": false
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "locale": { "type": "string" },
+        "timezone": { "type": "string" },
+        "custom": { "type": "object" }
+      },
+      "patternProperties": { "^x-[a-z0-9-]+$": {} },
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": { "type": "string" },
+          "provider": { "type": "string" },
+          "config": { "type": "object" }
+        },
+        "patternProperties": { "^x-[a-z0-9-]+$": {} },
+        "additionalProperties": false
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "kind", "ownerSignature"],
+        "description": "assets[].name MUST be unique within this Alter (conformance rule, not expressible as a plain structural constraint).",
+        "properties": {
+          "name": { "type": "string" },
+          "kind": { "enum": ["inline", "ref"] },
+          "uri": { "type": "string" },
+          "encryption": {
+            "type": "object",
+            "properties": {
+              "algorithm": { "enum": ["age-x25519", "jwe"] },
+              "recipients": { "type": "array", "items": { "type": "string" } },
+              "ciphertext": { "type": "string" }
+            },
+            "patternProperties": { "^x-[a-z0-9-]+$": {} },
+            "additionalProperties": false
+          },
+          "ownerSignature": {
+            "allOf": [{ "$ref": "#/$defs/detachedSignature" }],
+            "description": "Detached signature over the canonicalized {name, kind, uri|encryption} tuple of this asset. Independent from the document-level signature, which excludes assets[]. Prevents silent substitution of ciphertext, uri, or recipients by anyone with mere write access to the file."
+          }
+        },
+        "patternProperties": { "^x-[a-z0-9-]+$": {} },
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": { "properties": { "kind": { "const": "ref" } } },
+            "then": { "required": ["uri"] }
+          },
+          {
+            "if": { "properties": { "kind": { "const": "inline" } } },
+            "then": { "required": ["encryption"] }
+          }
+        ]
+      }
+    },
+    "policies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["capability", "action", "effect"],
+        "properties": {
+          "capability": {
+            "type": "string",
+            "description": "MAY reference a capability not declared in this Alter's own capabilities[] (e.g. a defensive deny-by-default rule)."
+          },
+          "action": { "type": "string" },
+          "effect": { "enum": ["allow", "deny"] },
+          "condition": {
+            "type": "object",
+            "description": "Structured condition. Not a free-form expression string.",
+            "required": ["type", "operator", "value"],
+            "properties": {
+              "type": { "enum": ["os", "hostname", "env", "activeAlterId"] },
+              "operator": { "enum": ["equals", "notEquals", "in", "notIn"] },
+              "value": { "description": "Scalar for equals/notEquals, array for in/notIn." }
+            },
+            "patternProperties": { "^x-[a-z0-9-]+$": {} },
+            "additionalProperties": false
+          },
+          "scope": {
+            "enum": ["runtime", "guard"],
+            "default": "guard",
+            "description": "runtime: enforced before the action executes. guard: observed/logged only, does not block."
+          },
+          "audit": {
+            "type": "object",
+            "properties": {
+              "level": { "enum": ["none", "summary", "detailed"], "default": "summary" },
+              "redactSecrets": { "type": "boolean", "default": true }
+            },
+            "patternProperties": { "^x-[a-z0-9-]+$": {} },
+            "additionalProperties": false
+          }
+        },
+        "patternProperties": { "^x-[a-z0-9-]+$": {} },
+        "additionalProperties": false
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "properties": {
+        "hooks": {
+          "type": "object",
+          "properties": {
+            "preActivation": { "type": "array", "items": { "$ref": "#/$defs/hook" } },
+            "postActivation": { "type": "array", "items": { "$ref": "#/$defs/hook" } },
+            "preDeactivation": { "type": "array", "items": { "$ref": "#/$defs/hook" } },
+            "postDeactivation": { "type": "array", "items": { "$ref": "#/$defs/hook" } }
+          },
+          "patternProperties": { "^x-[a-z0-9-]+$": {} },
+          "additionalProperties": false
+        }
+      },
+      "patternProperties": { "^x-[a-z0-9-]+$": {} },
+      "additionalProperties": false
+    },
+    "signature": {
+      "allOf": [{ "$ref": "#/$defs/detachedSignature" }],
+      "description": "Covers apiVersion, metadata (excluding updatedAt), context, capabilities, policies and lifecycle. Excludes assets[] (each Asset carries its own ownerSignature instead) and metadata.updatedAt."
+    }
+  },
+  "patternProperties": {
+    "^x-[a-z0-9-]+$": {}
+  },
+  "additionalProperties": false
+}

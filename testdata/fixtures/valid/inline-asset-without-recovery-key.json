@@ -1,0 +1,29 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:22222222-2222-4222-8222-222222222222",
+    "name": "no-recovery-key",
+    "owner": {
+      "keyType": "ed25519",
+      "publicKeyFingerprint": "sha256:aa"
+    }
+  },
+  "assets": [
+    {
+      "name": "ssh-key",
+      "kind": "inline",
+      "encryption": {
+        "algorithm": "age-x25519",
+        "recipients": ["age1qz3s...owner"],
+        "ciphertext": "YWdlLWVuY3J5cHRpb24ub3JnL3YxCg=="
+      },
+      "ownerSignature": {
+        "algorithm": "ed25519",
+        "canonicalization": "JCS-RFC8785",
+        "signedAt": "2026-08-09T10:00:00Z",
+        "value": "base64:MEUCIQC91z...=="
+      }
+    }
+  ]
+}

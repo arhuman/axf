@@ -1,0 +1,10 @@
+# Build artifacts
+/bin/
+/axf
+
+# Coverage reports written by `make cover`
+/coverage.out
+/coverage.html
+
+# Editor and OS noise
+.DS_Store

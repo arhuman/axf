@@ -1,0 +1,12 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:00000000-0000-4000-8000-000000000000",
+    "name": "minimal",
+    "owner": {
+      "keyType": "ed25519",
+      "publicKeyFingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000"
+    }
+  }
+}

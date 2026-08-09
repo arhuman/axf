@@ -1,0 +1,29 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
+    "name": "hooked",
+    "owner": {
+      "keyType": "ed25519",
+      "publicKeyFingerprint": "sha256:2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9012a3b4c5d6e7f8091a2b3c4d5e6"
+    }
+  },
+  "capabilities": [
+    {
+      "type": "shell",
+      "config": { "promptLabel": "hooked" }
+    }
+  ],
+  "lifecycle": {
+    "hooks": {
+      "postActivation": [
+        { "capability": "shell", "action": "start" },
+        { "capability": "ssh-keypair", "action": "load" }
+      ],
+      "preDeactivation": [
+        { "capability": "ssh-keypair", "action": "flush" }
+      ]
+    }
+  }
+}

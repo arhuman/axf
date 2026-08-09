@@ -1,0 +1,88 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:6f9a1e0e-2e0a-4a7b-9b2e-6b6a2a2e6a2e",
+    "name": "systems-alchemist",
+    "createdAt": "2026-08-09T10:00:00Z",
+    "updatedAt": "2026-08-09T10:00:00Z",
+    "owner": {
+      "keyType": "ed25519",
+      "publicKeyFingerprint": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a0",
+      "recoveryKeyFingerprint": "sha256:1b2a3c4d5e6f7089a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8091a2b3c4d5",
+      "status": "active",
+      "keyEventLogUri": "ref://axf-registry/alter/6f9a1e0e-2e0a-4a7b-9b2e-6b6a2a2e6a2e/key-events"
+    }
+  },
+  "context": {
+    "locale": "fr-FR",
+    "timezone": "Europe/Paris",
+    "custom": {
+      "x-doolta": { "team": "systems" }
+    }
+  },
+  "capabilities": [
+    {
+      "type": "git-identity",
+      "config": { "name": "Alchemist", "email": "alchemist@example.com" }
+    },
+    {
+      "type": "shell",
+      "config": { "promptLabel": "alchemist" }
+    }
+  ],
+  "assets": [
+    {
+      "name": "github-token",
+      "kind": "ref",
+      "uri": "keychain://axf/github-token",
+      "ownerSignature": {
+        "algorithm": "ed25519",
+        "canonicalization": "JCS-RFC8785",
+        "signedAt": "2026-08-09T10:00:00Z",
+        "value": "base64:MEQCIBx7...=="
+      }
+    },
+    {
+      "name": "ssh-key",
+      "kind": "inline",
+      "encryption": {
+        "algorithm": "age-x25519",
+        "recipients": ["age1qz3s...owner", "age1qz3s...recovery"],
+        "ciphertext": "YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB..."
+      },
+      "ownerSignature": {
+        "algorithm": "ed25519",
+        "canonicalization": "JCS-RFC8785",
+        "signedAt": "2026-08-09T10:00:00Z",
+        "value": "base64:MEUCIQC91z...=="
+      }
+    }
+  ],
+  "policies": [
+    {
+      "capability": "browser-profile",
+      "action": "launch",
+      "effect": "deny",
+      "scope": "runtime",
+      "condition": {
+        "type": "activeAlterId",
+        "operator": "notEquals",
+        "value": "urn:axf:alter:6f9a1e0e-2e0a-4a7b-9b2e-6b6a2a2e6a2e"
+      },
+      "audit": { "level": "detailed", "redactSecrets": true }
+    }
+  ],
+  "lifecycle": {
+    "hooks": {
+      "postActivation": [ { "capability": "shell", "action": "start" } ],
+      "preDeactivation": [ { "capability": "ssh-keypair", "action": "flush" } ]
+    }
+  },
+  "signature": {
+    "algorithm": "ed25519",
+    "canonicalization": "JCS-RFC8785",
+    "signedAt": "2026-08-09T10:00:05Z",
+    "value": "base64:MEUCIQDx9...=="
+  }
+}

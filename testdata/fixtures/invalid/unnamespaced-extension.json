@@ -1,0 +1,9 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:77777777-7777-4777-8777-777777777777",
+    "name": "bad-extension-namespace",
+    "xDoolta": "extensions must use the x-<vendor> namespace"
+  }
+}

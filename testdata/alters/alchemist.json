@@ -1,0 +1,24 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:6f9a1e0e-2e0a-4a7b-9b2e-6b6a2a2e6a2e",
+    "name": "systems-alchemist",
+    "createdAt": "2026-08-09T10:00:00Z",
+    "updatedAt": "2026-08-09T10:00:00Z",
+    "owner": {
+      "keyType": "ed25519",
+      "publicKeyFingerprint": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a0"
+    }
+  },
+  "capabilities": [
+    {
+      "type": "git-identity",
+      "config": { "name": "Alchemist O'Brien", "email": "alchemist@example.com" }
+    },
+    {
+      "type": "shell",
+      "config": { "promptLabel": "alchemist prime" }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:99999999-9999-4999-8999-999999999999",
+    "name": "unknown-condition-type"
+  },
+  "policies": [
+    {
+      "capability": "browser-profile",
+      "action": "launch",
+      "effect": "deny",
+      "condition": {
+        "type": "phaseOfTheMoon",
+        "operator": "equals",
+        "value": "waxing"
+      }
+    }
+  ]
+}

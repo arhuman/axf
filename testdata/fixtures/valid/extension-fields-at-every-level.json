@@ -1,0 +1,93 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "x-doolta-root": { "note": "root level extension" },
+  "metadata": {
+    "id": "urn:axf:alter:11111111-1111-4111-8111-111111111111",
+    "name": "extended",
+    "createdAt": "2026-08-09T10:00:00Z",
+    "updatedAt": "2026-08-09T10:00:00Z",
+    "x-doolta-metadata": "metadata level extension",
+    "owner": {
+      "keyType": "ed25519",
+      "publicKeyFingerprint": "sha256:aa",
+      "recoveryKeyFingerprint": "sha256:bb",
+      "status": "active",
+      "keyEventLogUri": "ref://axf-registry/alter/11111111/key-events",
+      "x-doolta-owner": ["owner level extension"]
+    }
+  },
+  "context": {
+    "locale": "en-GB",
+    "timezone": "Europe/London",
+    "custom": { "x-doolta": { "team": "systems" } },
+    "x-doolta-context": 42
+  },
+  "capabilities": [
+    {
+      "type": "shell",
+      "provider": "zsh",
+      "config": { "promptLabel": "extended", "x-doolta-config": true },
+      "x-doolta-capability": "capability item level extension"
+    }
+  ],
+  "assets": [
+    {
+      "name": "inline-secret",
+      "kind": "inline",
+      "encryption": {
+        "algorithm": "age-x25519",
+        "recipients": ["age1qz3s...owner"],
+        "ciphertext": "YWdlLWVuY3J5cHRpb24ub3JnL3YxCg==",
+        "x-doolta-encryption": "encryption level extension"
+      },
+      "ownerSignature": {
+        "algorithm": "ed25519",
+        "canonicalization": "JCS-RFC8785",
+        "signedAt": "2026-08-09T10:00:00Z",
+        "value": "base64:MEUCIQC91z...==",
+        "x-doolta-owner-signature": "detached signature level extension"
+      },
+      "x-doolta-asset": "asset item level extension"
+    }
+  ],
+  "policies": [
+    {
+      "capability": "browser-profile",
+      "action": "launch",
+      "effect": "deny",
+      "scope": "runtime",
+      "condition": {
+        "type": "os",
+        "operator": "in",
+        "value": ["linux", "darwin"],
+        "x-doolta-condition": "condition level extension"
+      },
+      "audit": {
+        "level": "detailed",
+        "redactSecrets": true,
+        "x-doolta-audit": "audit level extension"
+      },
+      "x-doolta-policy": "policy item level extension"
+    }
+  ],
+  "lifecycle": {
+    "hooks": {
+      "preActivation": [
+        { "capability": "shell", "action": "prepare", "x-doolta-hook": "hook level extension" }
+      ],
+      "postActivation": [ { "capability": "shell", "action": "start" } ],
+      "preDeactivation": [ { "capability": "ssh-keypair", "action": "flush" } ],
+      "postDeactivation": [ { "capability": "shell", "action": "stop" } ],
+      "x-doolta-hooks": "hooks level extension"
+    },
+    "x-doolta-lifecycle": "lifecycle level extension"
+  },
+  "signature": {
+    "algorithm": "ed25519",
+    "canonicalization": "JCS-RFC8785",
+    "signedAt": "2026-08-09T10:00:05Z",
+    "value": "base64:MEUCIQDx9...==",
+    "x-doolta-signature": "signature level extension"
+  }
+}

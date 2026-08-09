@@ -1,0 +1,19 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:44444444-4444-4444-8444-444444444444",
+    "name": "unsigned-inline-asset"
+  },
+  "assets": [
+    {
+      "name": "ssh-key",
+      "kind": "inline",
+      "encryption": {
+        "algorithm": "age-x25519",
+        "recipients": ["age1qz3s...owner"],
+        "ciphertext": "YWdlLWVuY3J5cHRpb24ub3JnL3YxCg=="
+      }
+    }
+  ]
+}

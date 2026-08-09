@@ -1,0 +1,8 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "6f9a1e0e-2e0a-4a7b-9b2e-6b6a2a2e6a2e",
+    "name": "bare-uuid-not-a-urn"
+  }
+}
