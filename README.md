@@ -1,11 +1,122 @@
 # axf
 
-Reference Go SDK and CLI for **AXF (Alter eXtensible Format)**, an open specification describing an *Alter*: a coherent digital environment representing one operational identity. An Alter gathers everything needed to act coherently and in isolation within a digital environment (browser, shell, SSH, Git, AI accounts, locale, history) so that several independent applications can read, create, modify, exchange and run the same Alter without depending on any single implementation. AXF aims to play the role for a digital identity that OpenAPI plays for an API or OCI for a container: one reference specification, several independent implementations.
+Managing multiple digital identities is messy: a day job, a freelance client, a side project, a pseudonymous account. Switching between them usually means juggling `~/.ssh/config` rules, overriding `.gitconfig` so you don't accidentally commit with the wrong email, and running separate browser windows so cookies and history don't bleed together.
 
-> **Status: draft v0 format, v1.1 runtime. The specification is not stable yet.**
-> This repository implements the v0 data-model layer (types, JSON Schema, parser, structural validator, format conformance fixtures), the v1 activation runtime (`axf up` / `axf down`, the `shell`, `git-identity` and `browser-profile` providers, lifecycle hook execution) and the v1.1 Alter Guard (`policies[]` enforcement on the activation path, audit trail in the shape of spec section 15). The Key Event Log is a later milestone and is deliberately absent. No cryptography is performed: signature and encryption blocks are carried verbatim, never produced or verified, which is why the `ssh-keypair` and `ai-account` capabilities have no provider yet.
+`axf` fixes that. It lets you switch between isolated digital identities in a single shell session, on demand, with no daemon. An identity here means the things you routinely trip over when you juggle contexts: git author and committer, browser profile, SSH key selection, and a few runtime policies. You activate one identity with `axf up <name>` and deactivate it with `axf down`. The runtime prints shell `export` and `unset` commands, so the calling shell stays in control.
 
-## Install and build
+> Status: draft v0 format, v1.1 runtime. The specification is not stable yet.
+
+## 1. The pain and the goal (why)
+
+If you regularly switch between contexts, you have probably done some version of this:
+
+- committing with the wrong git identity
+- opening the wrong browser profile and mixing accounts, cookies, and history
+- using the wrong SSH key for a repo or a server
+- hacking around it with multiple terminals, multiple user accounts, or a pile of ad hoc shell scripts
+
+The goal of `axf` is to make identity switching explicit, repeatable, and easy to audit:
+
+- one command to enter an identity context for the current shell
+- one command to exit it cleanly
+- identities stored as plain JSON documents you can version and review
+- no background process, no hidden state
+
+## 2. Real life examples (how)
+
+### Example A: consultant switching between two clients
+
+You work with Client A and Client B. Each needs its own git identity, its own browser profile, and sometimes a dedicated SSH key.
+
+1. Put your Alter documents in the default store:
+
+- `~/.axf/alters/client-a.json`
+- `~/.axf/alters/client-b.json`
+
+2. Activate Client A in your current shell:
+
+```sh
+eval "$(axf up client-a)"
+```
+
+At this point, the runtime has only printed environment changes. It does not start a daemon and it does not need a state file.
+
+3. Your tools now see the identity via environment variables:
+
+- git sees `GIT_AUTHOR_*` and `GIT_COMMITTER_*`
+- your shell prompt can use `AXF_PROMPT_LABEL`
+- a browser launch hook can use the per Alter browser profile directory
+- SSH key selection can be wired from `AXF_SSH_KEY_PATH`
+
+4. Switch to Client B in the same terminal:
+
+```sh
+eval "$(axf up client-b)"
+```
+
+`axf up` will tear down the previously active Alter first (based on `AXF_ACTIVE_ALTER`), then activate the new one.
+
+5. Leave the identity context:
+
+```sh
+eval "$(axf down)"
+```
+
+### Example B: a minimal Alter you can copy and adapt
+
+This is the shape of an Alter document that is immediately useful with this runtime. The store name is the file stem passed to `axf up <name>`, and it does not need to equal `metadata.name`.
+
+```json
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:00000000-0000-0000-0000-000000000000",
+    "name": "client-a",
+    "owner": {
+      "keyType": "ed25519",
+      "publicKeyFingerprint": "sha256:placeholder"
+    }
+  },
+  "capabilities": [
+    { "type": "shell", "config": { "promptLabel": "client-a" } },
+    { "type": "git-identity", "config": { "name": "Client A", "email": "dev@client-a.example" } },
+    { "type": "browser-profile", "config": { "engine": "firefox", "profileDir": "client-a/firefox" } },
+    { "type": "ssh-keypair", "config": { "asset": "ssh-key" } }
+  ],
+  "assets": [
+    {
+      "name": "ssh-key",
+      "kind": "ref",
+      "uri": "/home/you/.ssh/client_a_ed25519",
+      "ownerSignature": {
+        "algorithm": "ed25519",
+        "canonicalization": "JCS-RFC8785",
+        "signedAt": "2026-08-09T10:00:00Z",
+        "value": "base64:placeholder"
+      }
+    }
+  ],
+  "lifecycle": {
+    "hooks": {
+      "postActivation": [{ "capability": "browser-profile", "action": "launch" }]
+    }
+  }
+}
+```
+
+A few practical notes:
+
+- If you prefer not to store key material paths directly, use an `inline` Asset instead and let `ssh-keypair` decrypt it at activation time. See the SSH section below.
+- `AXF_SSH_KEY_PATH` is informational. To actually use it, wire it into your shell, for example:
+
+```sh
+export GIT_SSH_COMMAND="ssh -i $AXF_SSH_KEY_PATH -o IdentitiesOnly=yes"
+```
+
+## 3. Install
+
+This repository currently documents building from source.
 
 ```sh
 make build      # compile bin/axf (cgo-free)
@@ -16,12 +127,34 @@ make tidy       # go mod tidy + gofmt
 make help       # list all targets
 ```
 
+After `make build`, the binary is at `bin/axf`. Put it on your `PATH` or invoke it directly.
+
+## 4. Architecture and what AXF is (what)
+
+AXF (Alter eXtensible Format) is an open JSON specification for describing an Alter, a coherent operational identity. The format is meant to be shared across independent tools, so that multiple applications can read, create, validate, and run the same identity document. AXF aims to play the role for a digital identity that OpenAPI plays for an API, or OCI for a container: one reference specification, several independent implementations.
+
+This repository provides:
+
+- a reference Go SDK for the v0 data model (types, JSON Schema, parser, structural validator, conformance fixtures)
+- a local activation runtime exposed as a CLI (`axf up` and `axf down`)
+- providers for `shell`, `git-identity`, `browser-profile`, and `ssh-keypair`
+- the Alter Guard (policy enforcement on the activation path, plus an audit trail)
+
+It deliberately does not implement later milestones:
+
+- the Key Event Log is absent
+- signature blocks are carried verbatim, never produced or verified
+- cryptography is limited to reading for `ssh-keypair` when decrypting an inline Asset with a local age identity
+- this build has no CLI command producing ciphertext for inline Assets
+- the `ai-account` capability has no provider
+
 ## CLI
 
 ```sh
 axf up <name>                # print the shell commands activating an Alter
 axf down                     # print the shell commands deactivating the active one
 axf audit                    # print the Alter Guard audit trail
+axf keys generate <name>     # create the decryption identity of an Alter, print its recipient
 axf validate alter.json      # schema + conformance validation, one or more files
 axf schema                   # print the embedded JSON Schema
 axf version
@@ -52,7 +185,8 @@ first when switching Alters; `axf down` reads it to know what to undo. Running
 |---|---|---|
 | `shell` | `{"promptLabel": "alchemist"}` | exports `AXF_ALTER_NAME` and `AXF_PROMPT_LABEL` for your own `PS1` |
 | `git-identity` | `{"name": "...", "email": "..."}` | exports `GIT_AUTHOR_*` and `GIT_COMMITTER_*`, overriding `.gitconfig` without touching it |
-| `browser-profile` | `{"engine": "firefox\|chrome\|auto", "profileDir": "..."}` | isolates a profile under `$AXF_HOME/profiles/<name>/<engine>` and exports `AXF_BROWSER_PROFILE` |
+| `browser-profile` | `{"engine": "firefox\|chrome\|auto", "profileDir": "..."}` | isolates a profile under `$AXF_HOME/profiles/<name>/<engine>` (or `profileDir`, which must still resolve inside `$AXF_HOME/profiles`) and exports `AXF_BROWSER_PROFILE` |
+| `ssh-keypair` | `{"asset": "<assets[].name>"}` | resolves that Asset to a private key path and exports `AXF_SSH_KEY_PATH` |
 
 Every capability is expressed as environment variables so that deactivation is a
 plain `unset` leaving nothing behind on disk. `browser-profile` starts no
@@ -66,12 +200,44 @@ not open a second window:
 } }
 ```
 
-A capability with no provider in this build (`ssh-keypair`, `ai-account`,
-`locale`) stops the activation before anything is printed: a partially applied
+A capability with no provider in this build (`ai-account`, `locale`) stops the
+activation before anything is printed: a partially applied
 identity would let you believe a capability is in place when it is not. A
 *hook* the runtime cannot honour only warns on stderr and sets a non-zero exit
 code, leaving stdout a correct script, and `axf down` always clears
 `AXF_ACTIVE_ALTER` even when the document has since been deleted.
+
+## SSH keys and inline Assets
+
+`ssh-keypair` names one `assets[]` entry and resolves it to a private key path.
+A `ref` Asset is a key you already manage: its `uri` is checked to be a regular
+file and exported as is, nothing is copied or decrypted. An `inline` Asset is
+decrypted and written to `$AXF_HOME/keys/ssh/<name>/<asset>`, mode `0600` under
+a `0700` directory, the same per-Alter isolation browser profiles get.
+
+Decryption needs a local age identity, one per Alter, so that no single key can
+correlate two of them:
+
+```sh
+axf keys generate systems-alchemist    # prints an age1... recipient
+```
+
+The identity is written to `$AXF_HOME/keys/<name>.age` (mode `0600`) and its
+recipient printed on stdout. Add that line to
+`assets[].encryption.recipients[]` yourself; nothing edits a document for you,
+and this build has no command producing a ciphertext either. Creating one
+today means writing Go against `filippo.io/age` directly and pasting the
+result into an Alter document by hand; there is no CLI command for it yet.
+Generating twice for the same Alter is refused rather than silently replacing
+the key every existing ciphertext was encrypted for: rotating means removing
+the file first, knowingly.
+
+`AXF_SSH_KEY_PATH` is informational, like `AXF_BROWSER_PROFILE`: no tool reads
+it on its own. Wiring it into `ssh` or `git` is your shell's business:
+
+```sh
+export GIT_SSH_COMMAND="ssh -i $AXF_SSH_KEY_PATH -o IdentitiesOnly=yes"
+```
 
 ## The Alter Guard
 
