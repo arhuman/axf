@@ -17,7 +17,7 @@ jobs:
         with:
           # goreleaser needs full history + tags to build the changelog.
           fetch-depth: 0
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           # Ship binaries built with the latest stable Go for all runtime/stdlib
           # security fixes, independent of the go.mod floor.
