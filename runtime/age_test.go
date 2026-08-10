@@ -270,6 +270,20 @@ func TestDecryptAsset(t *testing.T) {
 			}(),
 			want: `algorithm "jwe" is not supported`,
 		},
+		{
+			// The decrypted-plaintext cap: a real, valid envelope that just
+			// decrypts to more than any AXF v0 asset is expected to hold.
+			name:  "decrypted content exceeds the plaintext cap",
+			asset: inlineAsset("ssh-key", encryptFor(t, strings.Repeat("a", 1<<20+1), recipient), recipient),
+			want:  "exceeds 1048576 bytes",
+		},
+		{
+			// The ciphertext-string cap, checked before base64 decode, so the
+			// string need not decode to anything valid: only its length matters.
+			name:  "ciphertext exceeds the ciphertext cap",
+			asset: inlineAsset("ssh-key", strings.Repeat("a", 2<<20+1), recipient),
+			want:  "larger than any AXF v0 asset is expected to be",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

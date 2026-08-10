@@ -94,4 +94,20 @@ func TestStoreLoad(t *testing.T) {
 			t.Error("Load() error = nil, want the schema violation")
 		}
 	})
+
+	t.Run("rejects a document exceeding the size cap", func(t *testing.T) {
+		path := filepath.Join(home, "alters", "huge.json")
+		// One byte over the 16 MiB cap; the content need not be valid JSON,
+		// since the cap is checked before parsing.
+		if err := os.WriteFile(path, []byte(strings.Repeat("a", 16<<20+1)), 0o600); err != nil {
+			t.Fatalf("writing %s: %v", path, err)
+		}
+		_, err := store.Load("huge")
+		if err == nil {
+			t.Fatal("Load() error = nil, want the size cap to reject it")
+		}
+		if !strings.Contains(err.Error(), "exceeds") {
+			t.Errorf("Load() error = %v, want it to mention the size cap", err)
+		}
+	})
 }

@@ -90,6 +90,13 @@ Log, signature verification, and Policy targeting by Asset. Test fixtures for
 this change build their ciphertext directly with `filippo.io/age` in test
 code, not through a CLI command this pass does not add.
 
+Signature verification specifically is correctly deferred only for the
+current trust model, an Alter document the operator authors and never syncs
+or fetches from elsewhere. It stops being correctly deferred, and becomes
+worth implementing, the moment any future feature reads an Alter document
+from anywhere other than the operator's own hand: a sync command, a
+shared-document import, or Key Event Log reconciliation.
+
 ## Consequences
 
 ### Positive

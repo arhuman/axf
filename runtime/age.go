@@ -31,6 +31,14 @@ var ErrDecrypt = errors.New("runtime: cannot decrypt asset")
 // while still bounding a malformed or oversized ciphertext.
 const maxAssetPlaintext = 1 << 20
 
+// maxAssetCiphertext bounds encryption.ciphertext before it is base64-decoded,
+// ahead of maxAssetPlaintext on the decrypted side. An Alter document is
+// operator-authored and trusted, but a cap here still bounds how much a single
+// malformed or runaway ciphertext string forces into memory before decryption
+// is even attempted. 2 MiB is generous headroom over the 1 MiB plaintext cap
+// for age's envelope overhead (per-recipient stanzas, chunked AEAD tags).
+const maxAssetCiphertext = 2 << 20
+
 // IdentityPath returns the age identity file of one Alter,
 // $AXF_HOME/keys/<name>.age.
 //
@@ -113,6 +121,10 @@ func DecryptAsset(asset alter.Asset, identities []age.Identity, source string) (
 		return nil, fmt.Errorf("%w %q: algorithm %q is not supported, want %q",
 			ErrDecrypt, asset.Name, alg, alter.EncryptionAgeX25519)
 	}
+	if len(asset.Encryption.Ciphertext) > maxAssetCiphertext {
+		return nil, fmt.Errorf("%w %q: encryption.ciphertext is %d bytes, larger than any AXF v0 asset is expected to be",
+			ErrDecrypt, asset.Name, len(asset.Encryption.Ciphertext))
+	}
 	envelope, err := base64.StdEncoding.DecodeString(asset.Encryption.Ciphertext)
 	if err != nil {
 		return nil, fmt.Errorf("%w %q: encryption.ciphertext is not base64: %w", ErrDecrypt, asset.Name, err)
@@ -131,6 +143,10 @@ func DecryptAsset(asset alter.Asset, identities []age.Identity, source string) (
 		return nil, fmt.Errorf("%w %q with the identities in %s: %w", ErrDecrypt, asset.Name, source, err)
 	}
 	if len(plaintext) > maxAssetPlaintext {
+		// This is the one return in DecryptAsset that discards a full decrypted
+		// buffer: zero it before returning, matching writeInlineKey's deferred
+		// zero on the success path (runtime/sshkeypair.go).
+		zero(plaintext)
 		return nil, fmt.Errorf("%w %q: decrypted content exceeds %d bytes, larger than any AXF v0 asset is expected to be",
 			ErrDecrypt, asset.Name, maxAssetPlaintext)
 	}

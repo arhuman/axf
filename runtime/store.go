@@ -3,6 +3,7 @@ package runtime
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,14 @@ import (
 
 // HomeEnv is the environment variable overriding the AXF runtime root.
 const HomeEnv = "AXF_HOME"
+
+// maxAlterDocument bounds how much of an Alter document Load reads into
+// memory, ahead of parsing. An Alter document is operator-authored and
+// trusted, but a cap here still bounds how much a single malformed or
+// runaway file forces into memory before alter.Parse gets a chance to
+// reject it. 16 MiB is generous for a document holding many capabilities,
+// policies and assets.
+const maxAlterDocument = 16 << 20
 
 // ErrAlterNotFound reports a store name with no document behind it.
 var ErrAlterNotFound = errors.New("runtime: no such Alter")
@@ -70,13 +79,22 @@ func (s Store) Load(name string) (*alter.Alter, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(path) //nolint:gosec // G304: AlterPath already ran name through checkAlterName
+	f, err := os.Open(path) //nolint:gosec // G304: AlterPath already ran name through checkAlterName
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("%w: no Alter named %q in $AXF_HOME/alters (looked for %s)",
 				ErrAlterNotFound, name, path)
 		}
 		return nil, fmt.Errorf("runtime: reading %s: %w", path, err)
+	}
+	data, err := io.ReadAll(io.LimitReader(f, maxAlterDocument+1))
+	_ = f.Close()
+	if err != nil {
+		return nil, fmt.Errorf("runtime: reading %s: %w", path, err)
+	}
+	if len(data) > maxAlterDocument {
+		return nil, fmt.Errorf("runtime: %s exceeds %d bytes, larger than any AXF v0 document is expected to be",
+			path, maxAlterDocument)
 	}
 	doc, err := conformance.ParseAndCheck(data)
 	if err != nil {

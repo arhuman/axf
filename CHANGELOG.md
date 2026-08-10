@@ -19,3 +19,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
   `$AXF_HOME/keys/ssh/<alter>/<asset>` and export `AXF_SSH_KEY_PATH`.
 - `docs/ARCHITECTURE.md`: how the runtime, providers and the Alter Guard fit
   together.
+- `axf validate` now warns when a `policies[]` deny entry sets no explicit
+  `scope`, since the default silently only observes rather than blocking.
+- Alter document loading and inline Asset decryption now reject oversized
+  input (a document over 16 MiB, an encrypted asset's ciphertext over 2 MiB,
+  or decrypted content over 1 MiB) instead of reading it unbounded.
