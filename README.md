@@ -2,8 +2,8 @@
 
 Reference Go SDK and CLI for **AXF (Alter eXtensible Format)**, an open specification describing an *Alter*: a coherent digital environment representing one operational identity. An Alter gathers everything needed to act coherently and in isolation within a digital environment (browser, shell, SSH, Git, AI accounts, locale, history) so that several independent applications can read, create, modify, exchange and run the same Alter without depending on any single implementation. AXF aims to play the role for a digital identity that OpenAPI plays for an API or OCI for a container: one reference specification, several independent implementations.
 
-> **Status: draft v0 format, v1 runtime. The specification is not stable yet.**
-> This repository implements the v0 data-model layer (types, JSON Schema, parser, structural validator, format conformance fixtures) and the v1 activation runtime (`axf up` / `axf down`, the `shell`, `git-identity` and `browser-profile` providers, lifecycle hook execution). The Alter Guard, meaning `policies[]` enforcement and the audit trail, and the Key Event Log are later milestones and are deliberately absent: `axf up` activates a capability whatever `policies[]` says. No cryptography is performed: signature and encryption blocks are carried verbatim, never produced or verified, which is why the `ssh-keypair` and `ai-account` capabilities have no provider yet.
+> **Status: draft v0 format, v1.1 runtime. The specification is not stable yet.**
+> This repository implements the v0 data-model layer (types, JSON Schema, parser, structural validator, format conformance fixtures), the v1 activation runtime (`axf up` / `axf down`, the `shell`, `git-identity` and `browser-profile` providers, lifecycle hook execution) and the v1.1 Alter Guard (`policies[]` enforcement on the activation path, audit trail in the shape of spec section 15). The Key Event Log is a later milestone and is deliberately absent. No cryptography is performed: signature and encryption blocks are carried verbatim, never produced or verified, which is why the `ssh-keypair` and `ai-account` capabilities have no provider yet.
 
 ## Install and build
 
@@ -21,6 +21,7 @@ make help       # list all targets
 ```sh
 axf up <name>                # print the shell commands activating an Alter
 axf down                     # print the shell commands deactivating the active one
+axf audit                    # print the Alter Guard audit trail
 axf validate alter.json      # schema + conformance validation, one or more files
 axf schema                   # print the embedded JSON Schema
 axf version
@@ -72,6 +73,71 @@ identity would let you believe a capability is in place when it is not. A
 code, leaving stdout a correct script, and `axf down` always clears
 `AXF_ACTIVE_ALTER` even when the document has since been deleted.
 
+## The Alter Guard
+
+The Guard is the runtime component that applies `policies[]` and produces the
+audit trail (spec sections 4, 11 and 15). It needs no subcommand: it runs inside
+`axf up` and `axf down`.
+
+For one `(capability, action)` pair, every `policies[]` entry matching both is
+evaluated. **Deny overrides**: one matching `deny` is enough, and no `allow` can
+clear it. AXF v0 has no default-deny baseline, so an `allow` entry decides
+nothing by itself; it exists to put an explicit line in the trail. An action no
+policy targets proceeds.
+
+`scope` decides blocking, not auditing. `runtime` stops the action before it
+runs; `guard`, the schema default, records the same denial and lets it proceed.
+Exactly one audit event is written per evaluation either way, including when no
+policy matched at all.
+
+Activating a capability is matched as `action: "activate"` and deactivating it as
+`action: "deactivate"`. Neither name appears in the schema, which only ever names
+the actions carried by a lifecycle hook: they are a convention of this runtime.
+
+```json
+"policies": [
+  {
+    "capability": "browser-profile",
+    "action": "launch",
+    "effect": "deny",
+    "scope": "runtime",
+    "condition": { "type": "hostname", "operator": "in", "value": ["work-laptop"] }
+  }
+]
+```
+
+A denied capability or hook stops `axf up` before a single line reaches stdout,
+the same fail-closed posture a capability with no provider has. Deactivation is
+audited but **never** blocked: a deny policy must not be able to strand a shell
+inside an Alter, so `axf down` evaluates no condition at all.
+
+Conditions read `runtime.GOOS` (`os`), `os.Hostname()` (`hostname`),
+`AXF_ACTIVE_ALTER` (`activeAlterName`) and an arbitrary environment variable
+named by `condition.name` (`env`). During `axf up <name>` the `activeAlterName`
+fact still holds the *previous* Alter, since the new value only reaches the
+shell through the `export` line it has not evaluated yet. A condition that
+cannot be evaluated fails closed and aborts the activation rather than being
+read as false; an `env` condition with no `name` set is one such case.
+
+`activeAlterName` compares the store name a runtime activated the Alter under
+(the `<name>` in `axf up <name>`), not `metadata.id`: the two are distinct by
+design (spec §7.1), and a URN would be impractical to type or read in a shell.
+
+The trail is appended to `$AXF_HOME/audit.log`, one JSON event per line:
+
+```sh
+axf audit | jq 'select(.result == "denied")'
+```
+
+`actor` is a random token generated once per invocation and never persisted,
+never the real PID: spec section 15 forbids leaking host process identifiers,
+which would themselves de-pseudonymise the Alter. Events carry capability, action
+and provider names only, so no decrypted secret can reach the log.
+
+Enforcement covers the actions axf performs and nothing else. A browser started
+outside axf is not policed; that would need OS-level integration a CLI with no
+daemon cannot have.
+
 ## SDK
 
 ```go
@@ -106,7 +172,7 @@ timestamp would change it.
 ```
 .                       package alter: the v0 types, Parse, Validate
 conformance/            rules JSON Schema cannot express, plus SDK warnings
-runtime/                the v1 runtime: store, Provider contract, providers, up/down
+runtime/                the runtime: store, Provider contract, providers, up/down, Alter Guard
 schema/alter.schema.json  canonical JSON Schema (draft 2020-12), embedded via go:embed
 cmd/axf/                CLI entry point
 internal/cli/           CLI implementation

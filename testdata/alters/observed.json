@@ -1,0 +1,27 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:4d5e6f7a-8b9c-4d0e-8f1a-2b3c4d5e6f7a",
+    "name": "observed",
+    "owner": {
+      "keyType": "ed25519",
+      "publicKeyFingerprint": "sha256:4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9012a3b4c5d6e7f8091a2b3c4d5e6f7a8"
+    }
+  },
+  "capabilities": [
+    {
+      "type": "shell",
+      "config": { "promptLabel": "observed" }
+    }
+  ],
+  "policies": [
+    {
+      "capability": "shell",
+      "action": "activate",
+      "effect": "deny",
+      "scope": "guard",
+      "audit": { "level": "detailed", "redactSecrets": true }
+    }
+  ]
+}

@@ -161,7 +161,7 @@ func TestParseCanonicalInstanceFields(t *testing.T) {
 	if policy.EffectiveScope() != alter.ScopeRuntime {
 		t.Errorf("policies[0].scope = %q", policy.EffectiveScope())
 	}
-	if policy.Condition == nil || policy.Condition.Type != alter.ConditionActiveAlterID {
+	if policy.Condition == nil || policy.Condition.Type != alter.ConditionActiveAlterName {
 		t.Errorf("policies[0].condition = %+v", policy.Condition)
 	}
 	if !policy.RedactSecrets() {

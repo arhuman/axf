@@ -1,0 +1,45 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f",
+    "name": "guarded",
+    "owner": {
+      "keyType": "ed25519",
+      "publicKeyFingerprint": "sha256:3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9012a3b4c5d6e7f8091a2b3c4d5e6f7"
+    }
+  },
+  "capabilities": [
+    {
+      "type": "shell",
+      "config": { "promptLabel": "guarded" }
+    }
+  ],
+  "policies": [
+    {
+      "capability": "shell",
+      "action": "activate",
+      "effect": "deny",
+      "scope": "runtime"
+    },
+    {
+      "capability": "shell",
+      "action": "deactivate",
+      "effect": "deny",
+      "scope": "runtime"
+    },
+    {
+      "capability": "shell",
+      "action": "start",
+      "effect": "deny",
+      "scope": "runtime"
+    }
+  ],
+  "lifecycle": {
+    "hooks": {
+      "preDeactivation": [
+        { "capability": "shell", "action": "start" }
+      ]
+    }
+  }
+}

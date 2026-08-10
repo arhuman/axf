@@ -27,6 +27,7 @@ const usage = `axf reads, validates and activates AXF (Alter eXtensible Format) 
 Usage:
   axf up <name>            print the shell commands activating an Alter
   axf down                 print the shell commands deactivating the active Alter
+  axf audit                print the Alter Guard audit trail
   axf validate <file>...   validate documents against the AXF v0 schema and conformance rules
   axf schema               print the embedded JSON Schema
   axf version              print build information
@@ -41,10 +42,15 @@ Alters are read from $AXF_HOME/alters/<name>.json, $AXF_HOME defaulting to
 ~/.axf. Which Alter is active is carried by AXF_ACTIVE_ALTER in the shell that
 evaluated axf up; nothing is stored on disk.
 
-This build covers the data model and the v1 runtime: the shell, git-identity
-and browser-profile capabilities, plus lifecycle hook execution. Policy
-enforcement and the audit trail belong to the Alter Guard and are not
-implemented yet.
+The Alter Guard applies policies[] to the activation path: a matching deny with
+scope runtime stops axf up before it prints anything, one with scope guard only
+records the decision. Every capability action of up and down is appended to
+$AXF_HOME/audit.log, which axf audit prints. Deactivation is audited but never
+blocked, so axf down always returns a shell to a clean state.
+
+This build covers the data model, the v1 runtime (the shell, git-identity and
+browser-profile capabilities, plus lifecycle hook execution) and the v1.1 Alter
+Guard. Signature verification and Asset decryption are not implemented.
 `
 
 // Run executes one axf invocation and returns the process exit code. args are
@@ -60,6 +66,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runUp(args[1:], stdout, stderr)
 	case "down":
 		return runDown(args[1:], stdout, stderr)
+	case "audit":
+		return runAudit(args[1:], stdout, stderr)
 	case "validate":
 		return runValidate(args[1:], stdout, stderr)
 	case "schema":
@@ -116,6 +124,36 @@ func runDown(args []string, stdout, stderr io.Writer) int {
 		return ExitOK
 	case err != nil:
 		report(stderr, "axf down", err)
+		return ExitError
+	}
+	return ExitOK
+}
+
+// runAudit dumps the Alter Guard trail verbatim, one JSON event per line, so it
+// pipes straight into jq. An absent trail is not a failure: it only means no
+// Alter has been activated from this $AXF_HOME yet.
+func runAudit(args []string, stdout, stderr io.Writer) int {
+	if len(args) != 0 {
+		fmt.Fprintf(stderr, "axf audit: expected no argument\n\n%s", usage)
+		return ExitUsage
+	}
+	home, err := runtime.Home()
+	if err != nil {
+		report(stderr, "axf audit", err)
+		return ExitError
+	}
+	path := runtime.Store{Home: home}.AuditPath()
+	data, err := os.ReadFile(path)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		fmt.Fprintf(stderr, "axf audit: no audit trail yet (%s)\n", path)
+		return ExitOK
+	case err != nil:
+		report(stderr, "axf audit", fmt.Errorf("cli: reading %s: %w", path, err))
+		return ExitError
+	}
+	if _, err := stdout.Write(data); err != nil {
+		report(stderr, "axf audit", fmt.Errorf("cli: writing the audit trail: %w", err))
 		return ExitError
 	}
 	return ExitOK

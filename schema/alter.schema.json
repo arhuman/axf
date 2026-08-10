@@ -147,12 +147,19 @@
             "description": "Structured condition. Not a free-form expression string.",
             "required": ["type", "operator", "value"],
             "properties": {
-              "type": { "enum": ["os", "hostname", "env", "activeAlterId"] },
+              "type": { "enum": ["os", "hostname", "env", "activeAlterName"] },
               "operator": { "enum": ["equals", "notEquals", "in", "notIn"] },
-              "value": { "description": "Scalar for equals/notEquals, array for in/notIn." }
+              "value": { "description": "Scalar for equals/notEquals, array for in/notIn." },
+              "name": { "type": "string", "description": "Required when type is 'env': the environment variable to inspect. Meaningless for other types." }
             },
             "patternProperties": { "^x-[a-z0-9-]+$": {} },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": { "properties": { "type": { "const": "env" } } },
+                "then": { "required": ["name"] }
+              }
+            ]
           },
           "scope": {
             "enum": ["runtime", "guard"],

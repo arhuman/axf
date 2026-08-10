@@ -1,0 +1,33 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b",
+    "name": "guarded-hook",
+    "owner": {
+      "keyType": "ed25519",
+      "publicKeyFingerprint": "sha256:5e6f7a8b9c0d1e2f3a4b5c6d7e8f9012a3b4c5d6e7f8091a2b3c4d5e6f7a8b9"
+    }
+  },
+  "capabilities": [
+    {
+      "type": "shell",
+      "config": { "promptLabel": "guarded-hook" }
+    }
+  ],
+  "policies": [
+    {
+      "capability": "shell",
+      "action": "start",
+      "effect": "deny",
+      "scope": "runtime"
+    }
+  ],
+  "lifecycle": {
+    "hooks": {
+      "postActivation": [
+        { "capability": "shell", "action": "start" }
+      ]
+    }
+  }
+}

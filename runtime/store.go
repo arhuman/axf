@@ -45,6 +45,12 @@ type Store struct {
 	Home string
 }
 
+// AuditPath returns the Alter Guard audit trail of this runtime root:
+// $AXF_HOME/audit.log, a JSON Lines file the Guard only ever appends to.
+func (s Store) AuditPath() string {
+	return filepath.Join(s.Home, "audit.log")
+}
+
 // AlterPath returns the file a store name resolves to, without reading it.
 func (s Store) AlterPath(name string) (string, error) {
 	if err := checkAlterName(name); err != nil {

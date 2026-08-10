@@ -57,10 +57,10 @@ type ConditionType string
 // Condition types. Extensible in later AXF revisions on the same model as the
 // capability registry.
 const (
-	ConditionOS            ConditionType = "os"
-	ConditionHostname      ConditionType = "hostname"
-	ConditionEnv           ConditionType = "env"
-	ConditionActiveAlterID ConditionType = "activeAlterId"
+	ConditionOS              ConditionType = "os"
+	ConditionHostname        ConditionType = "hostname"
+	ConditionEnv             ConditionType = "env"
+	ConditionActiveAlterName ConditionType = "activeAlterName"
 )
 
 // Operator is the comparison a Condition applies to its value.
@@ -271,6 +271,9 @@ type Condition struct {
 	// Value is a scalar for equals/notEquals and an array for in/notIn. It is
 	// kept as raw JSON because the schema deliberately leaves it untyped.
 	Value json.RawMessage `json:"value"`
+	// Name is the environment variable to inspect. Required when Type is
+	// ConditionEnv; meaningless for every other condition type.
+	Name string `json:"name,omitempty"`
 
 	Extensions Extensions `json:"-"`
 }

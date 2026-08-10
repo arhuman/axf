@@ -3,6 +3,8 @@ package runtime_test
 import (
 	"bytes"
 	"errors"
+	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -279,6 +281,202 @@ func TestUpRejectsAnInvalidEnvironmentVariableName(t *testing.T) {
 	}
 	if got != "" {
 		t.Errorf("script = %q, want nothing printed", got)
+	}
+}
+
+// A capability the Alter Guard refuses must stop the activation before anything
+// is printed, exactly like a capability with no provider: a policy denial is a
+// deliberate block, not a gap this build degrades around.
+func TestUpFailsClosedOnADeniedCapability(t *testing.T) {
+	home := newHome(t, "guarded")
+	got, err := up(t, home, "", "guarded", noBrowser())
+	if !errors.Is(err, runtime.ErrDeniedByPolicy) {
+		t.Fatalf("Up() error = %v, want it to wrap ErrDeniedByPolicy", err)
+	}
+	if !strings.Contains(err.Error(), "policies[0]") {
+		t.Errorf("Up() error = %v, want it to name the policy that refused", err)
+	}
+	if got != "" {
+		t.Errorf("script = %q, want nothing printed when the Guard denies", got)
+	}
+	if want := []runtime.AuditResult{runtime.ResultDenied}; !slices.Equal(results(t, home), want) {
+		t.Errorf("audit results = %v, want %v", results(t, home), want)
+	}
+}
+
+// A denied hook fails closed too. An unimplemented hook degrades gracefully
+// (see TestUpDegradesOnAnUnimplementedHook), but that latitude is for a missing
+// provider, never for a policy that says no.
+func TestUpFailsClosedOnADeniedHook(t *testing.T) {
+	home := newHome(t, "guarded-hook")
+	got, err := up(t, home, "", "guarded-hook", noBrowser())
+	if !errors.Is(err, runtime.ErrDeniedByPolicy) {
+		t.Fatalf("Up() error = %v, want it to wrap ErrDeniedByPolicy", err)
+	}
+	if got != "" {
+		t.Errorf("script = %q, want nothing printed when a hook is denied", got)
+	}
+	want := []runtime.AuditResult{runtime.ResultAllowed, runtime.ResultDenied}
+	if !slices.Equal(results(t, home), want) {
+		t.Errorf("audit results = %v, want %v", results(t, home), want)
+	}
+}
+
+// A guard-scoped deny observes without enforcing: the activation runs in full
+// and the trail still records what a runtime-scoped policy would have refused.
+func TestUpProceedsUnderAGuardScopedDeny(t *testing.T) {
+	home := newHome(t, "observed")
+	got, err := up(t, home, "", "observed", noBrowser())
+	if err != nil {
+		t.Fatalf("Up() error = %v, want scope guard never to block", err)
+	}
+	want := "export AXF_ALTER_NAME='observed'\n" +
+		"export AXF_PROMPT_LABEL='observed'\n" +
+		"export AXF_ACTIVE_ALTER='observed'\n"
+	if got != want {
+		t.Errorf("script =\n%s\nwant\n%s", got, want)
+	}
+	if wantResults := []runtime.AuditResult{runtime.ResultDenied}; !slices.Equal(results(t, home), wantResults) {
+		t.Errorf("audit results = %v, want %v", results(t, home), wantResults)
+	}
+}
+
+// Deactivation is audited but never blocked. The guarded fixture denies its own
+// deactivate action and its preDeactivation hook with scope runtime; both must
+// be ignored, or a deny policy could strand a shell inside an Alter.
+func TestDownIsNeverBlockedByAPolicy(t *testing.T) {
+	home := newHome(t, "guarded")
+	got, err := down(t, home, "guarded", noBrowser())
+	if err != nil {
+		t.Fatalf("Down() error = %v, want deactivation never refused", err)
+	}
+	want := "unset AXF_ALTER_NAME\n" +
+		"unset AXF_PROMPT_LABEL\n" +
+		"unset AXF_ACTIVE_ALTER\n"
+	if got != want {
+		t.Errorf("script =\n%s\nwant\n%s", got, want)
+	}
+	wantResults := []runtime.AuditResult{runtime.ResultAllowed, runtime.ResultAllowed}
+	if !slices.Equal(results(t, home), wantResults) {
+		t.Errorf("audit results = %v, want %v", results(t, home), wantResults)
+	}
+	for _, e := range auditTrail(t, home) {
+		if e.Action != "start" && e.Action != runtime.ActionDeactivate {
+			t.Errorf("audit action = %q, want the hook and the deactivation", e.Action)
+		}
+	}
+}
+
+// The trail covers capability actions in general, not only the ones a policy
+// touched: an Alter with no policies[] at all still audits every action.
+func TestUpAuditsEveryActionExactlyOnce(t *testing.T) {
+	home := newHome(t, "alchemist")
+	if _, err := up(t, home, "", "alchemist", noBrowser()); err != nil {
+		t.Fatalf("Up() error = %v", err)
+	}
+	events := auditTrail(t, home)
+	if len(events) != 2 {
+		t.Fatalf("audit events = %d, want one per capability", len(events))
+	}
+	for i, want := range []string{"git-identity", "shell"} {
+		if events[i].Capability != want || events[i].Action != runtime.ActionActivate {
+			t.Errorf("event %d = {%s, %s}, want {%s, %s}",
+				i, events[i].Capability, events[i].Action, want, runtime.ActionActivate)
+		}
+		if events[i].Result != runtime.ResultAllowed || events[i].Provider != want {
+			t.Errorf("event %d = %+v, want it allowed and handled by %s", i, events[i], want)
+		}
+		if events[i].AlterID != "urn:axf:alter:6f9a1e0e-2e0a-4a7b-9b2e-6b6a2a2e6a2e" {
+			t.Errorf("event %d alterId = %q, want the document id", i, events[i].AlterID)
+		}
+	}
+}
+
+// The actor ties together the events of one invocation and nothing more: two
+// runs of the same Alter must not be correlatable through it.
+func TestActorIsPerInvocation(t *testing.T) {
+	home := newHome(t, "alchemist")
+	for range 2 {
+		if _, err := up(t, home, "", "alchemist", noBrowser()); err != nil {
+			t.Fatalf("Up() error = %v", err)
+		}
+	}
+	events := auditTrail(t, home)
+	if len(events) != 4 {
+		t.Fatalf("audit events = %d, want two per invocation", len(events))
+	}
+	first, second := events[0].Actor, events[2].Actor
+	if first == "" || events[1].Actor != first {
+		t.Errorf("actors %q and %q, want one opaque actor per invocation", first, events[1].Actor)
+	}
+	if second == "" || events[3].Actor != second {
+		t.Errorf("actors %q and %q, want one opaque actor per invocation", second, events[3].Actor)
+	}
+	if first == second {
+		t.Errorf("both invocations recorded actor %q, want them uncorrelatable", first)
+	}
+}
+
+// Switching Alters audits both documents under the same actor, each event
+// carrying the metadata.id of the Alter it belongs to.
+func TestUpAuditsTheAlterItTearsDownToo(t *testing.T) {
+	home := newHome(t, "alchemist", "researcher")
+	if _, err := up(t, home, "alchemist", "researcher", noBrowser()); err != nil {
+		t.Fatalf("Up() error = %v", err)
+	}
+	events := auditTrail(t, home)
+	if len(events) != 3 {
+		t.Fatalf("audit events = %d, want one activation and two deactivations", len(events))
+	}
+	ids := make(map[string]bool, 2)
+	for _, e := range events {
+		ids[e.AlterID] = true
+		if e.Actor != events[0].Actor {
+			t.Errorf("actor = %q, want the whole invocation under %q", e.Actor, events[0].Actor)
+		}
+	}
+	if len(ids) != 2 {
+		t.Errorf("alterIds = %v, want the activated and the deactivated Alter", ids)
+	}
+}
+
+// blockAuditLog makes the audit trail of a home unwritable by putting a
+// directory where the file belongs.
+func blockAuditLog(t *testing.T, home string) {
+	t.Helper()
+	if err := os.Mkdir(runtime.Store{Home: home}.AuditPath(), 0o750); err != nil {
+		t.Fatalf("blocking the audit log: %v", err)
+	}
+}
+
+// An activation that cannot be recorded is an activation that does not happen:
+// enforcement without a trail is not what an Alter Guard promises, and the
+// runtime root is already required to be writable.
+func TestUpFailsClosedWhenTheTrailCannotBeWritten(t *testing.T) {
+	home := newHome(t, "alchemist")
+	blockAuditLog(t, home)
+
+	got, err := up(t, home, "", "alchemist", noBrowser())
+	if err == nil || !strings.Contains(err.Error(), "audit log") {
+		t.Fatalf("Up() error = %v, want the unwritable trail reported", err)
+	}
+	if got != "" {
+		t.Errorf("script = %q, want nothing printed", got)
+	}
+}
+
+// Deactivation makes the opposite trade: an unwritable trail is reported, but
+// the shell still gets its unsets. Nothing may keep a user inside an Alter.
+func TestDownStillClearsWhenTheTrailCannotBeWritten(t *testing.T) {
+	home := newHome(t, "alchemist")
+	blockAuditLog(t, home)
+
+	got, err := down(t, home, "alchemist", noBrowser())
+	if err == nil || !strings.Contains(err.Error(), "audit log") {
+		t.Fatalf("Down() error = %v, want the unwritable trail reported", err)
+	}
+	if !strings.HasSuffix(got, "unset AXF_ACTIVE_ALTER\n") {
+		t.Errorf("script = %q, want the deactivation printed anyway", got)
 	}
 }
 

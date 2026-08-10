@@ -7,11 +7,12 @@
 // output of `axf up`, per spec section 12: activation is a runtime fact, never
 // a field of the Alter document.
 //
-// This is the v1 layer of the roadmap (spec section 23). It does not enforce
-// policies[] and emits no audit events: both belong to the Alter Guard (spec
-// sections 11 and 15, roadmap v1.1). Capabilities whose provider would have to
-// decrypt an Asset, ssh-keypair and ai-account, have no implementation here
-// because this SDK performs no cryptography yet.
+// This is the v1 and v1.1 layer of the roadmap (spec section 23). The Alter
+// Guard applies policies[] to the activation path and appends the audit trail
+// of spec section 15 to $AXF_HOME/audit.log; see Guard for its decision model
+// and for what it deliberately does not police. Capabilities whose provider
+// would have to decrypt an Asset, ssh-keypair and ai-account, have no
+// implementation here because this SDK performs no cryptography yet.
 package runtime
 
 import (

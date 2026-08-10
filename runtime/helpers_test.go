@@ -1,10 +1,16 @@
 package runtime_test
 
 import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"github.com/arhuman/axf/runtime"
 )
 
 // alterFixtures holds the Alter documents the runtime tests activate.
@@ -30,6 +36,32 @@ func newHome(t *testing.T, names ...string) string {
 		}
 	}
 	return home
+}
+
+// auditTrail reads back the audit log of a home as decoded events. A home with
+// no trail yet yields none, which is how a test asserts nothing was audited.
+func auditTrail(t *testing.T, home string) []runtime.AuditEvent {
+	t.Helper()
+	data, err := os.ReadFile(runtime.Store{Home: home}.AuditPath())
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		t.Fatalf("reading the audit trail: %v", err)
+	}
+	var events []runtime.AuditEvent
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	for scanner.Scan() {
+		var e runtime.AuditEvent
+		if err := json.Unmarshal(scanner.Bytes(), &e); err != nil {
+			t.Fatalf("audit line %q is not one JSON event: %v", scanner.Text(), err)
+		}
+		events = append(events, e)
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatalf("scanning the audit trail: %v", err)
+	}
+	return events
 }
 
 // launched records one process a fakeLauncher was asked to start.

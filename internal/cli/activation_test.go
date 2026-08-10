@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -216,12 +217,88 @@ func TestDownRejectsArguments(t *testing.T) {
 	}
 }
 
+// A policy denial stops the activation before stdout gets a single line, the
+// same fail-closed posture an unimplemented capability has.
+func TestUpFailsClosedOnADeniedCapability(t *testing.T) {
+	setupHome(t, "guarded")
+	code, stdout, stderr := run(t, "up", "guarded")
+	if code != cli.ExitError {
+		t.Errorf("exit code = %d, want %d", code, cli.ExitError)
+	}
+	if stdout != "" {
+		t.Errorf("stdout = %q, want nothing to evaluate", stdout)
+	}
+	for _, want := range []string{"denied by an Alter Guard policy", "capability: shell", "policies[0]"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr = %q, want it to contain %q", stderr, want)
+		}
+	}
+}
+
+// axf audit prints the trail verbatim, one JSON event per line, so it pipes
+// into jq unchanged.
+func TestAuditPrintsTheTrail(t *testing.T) {
+	setupHome(t, "alchemist")
+	if code, _, stderr := run(t, "up", "alchemist"); code != cli.ExitOK {
+		t.Fatalf("axf up exit code = %d (stderr=%q)", code, stderr)
+	}
+	code, stdout, stderr := run(t, "audit")
+	if code != cli.ExitOK {
+		t.Fatalf("exit code = %d, want %d (stderr=%q)", code, cli.ExitOK, stderr)
+	}
+	lines := strings.Split(strings.TrimSuffix(stdout, "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("audit lines = %d, want one per capability:\n%s", len(lines), stdout)
+	}
+	for _, line := range lines {
+		var event map[string]any
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			t.Fatalf("audit line %q is not JSON: %v", line, err)
+		}
+		for _, field := range []string{"timestamp", "alterId", "actor", "capability", "action", "provider", "result"} {
+			if _, ok := event[field]; !ok {
+				t.Errorf("audit line %q has no %q field", line, field)
+			}
+		}
+		if event["result"] != "allowed" {
+			t.Errorf("audit line %q result = %v, want allowed", line, event["result"])
+		}
+	}
+}
+
+// An empty trail is not a failure: it only means nothing has been activated
+// from this $AXF_HOME yet.
+func TestAuditWithNothingRecordedYet(t *testing.T) {
+	setupHome(t)
+	code, stdout, stderr := run(t, "audit")
+	if code != cli.ExitOK {
+		t.Errorf("exit code = %d, want %d", code, cli.ExitOK)
+	}
+	if stdout != "" {
+		t.Errorf("stdout = %q, want nothing printed", stdout)
+	}
+	if !strings.Contains(stderr, "no audit trail yet") {
+		t.Errorf("stderr = %q, want the friendly message", stderr)
+	}
+}
+
+func TestAuditRejectsArguments(t *testing.T) {
+	setupHome(t)
+	code, _, stderr := run(t, "audit", "alchemist")
+	if code != cli.ExitUsage {
+		t.Errorf("exit code = %d, want %d", code, cli.ExitUsage)
+	}
+	if !strings.Contains(stderr, "expected no argument") {
+		t.Errorf("stderr = %q, want the usage error", stderr)
+	}
+}
+
 func TestHelpDocumentsActivation(t *testing.T) {
 	code, stdout, _ := run(t, "help")
 	if code != cli.ExitOK {
 		t.Fatalf("exit code = %d, want %d", code, cli.ExitOK)
 	}
-	for _, want := range []string{"axf up <name>", "axf down", `eval "$(axf up`} {
+	for _, want := range []string{"axf up <name>", "axf down", "axf audit", `eval "$(axf up`} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("help = %q, want it to contain %q", stdout, want)
 		}

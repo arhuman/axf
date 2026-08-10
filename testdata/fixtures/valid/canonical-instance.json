@@ -66,9 +66,9 @@
       "effect": "deny",
       "scope": "runtime",
       "condition": {
-        "type": "activeAlterId",
+        "type": "activeAlterName",
         "operator": "notEquals",
-        "value": "urn:axf:alter:6f9a1e0e-2e0a-4a7b-9b2e-6b6a2a2e6a2e"
+        "value": "systems-alchemist"
       },
       "audit": { "level": "detailed", "redactSecrets": true }
     }
