@@ -50,7 +50,7 @@ func TestRegistryLookup(t *testing.T) {
 		{name: "shell", capability: "shell", wantFound: true},
 		{name: "git-identity", capability: "git-identity", wantFound: true},
 		{name: "browser-profile", capability: "browser-profile", wantFound: true},
-		{name: "ssh-keypair", capability: "ssh-keypair", wantReason: "requires asset decryption"},
+		{name: "ssh-keypair", capability: "ssh-keypair", wantFound: true},
 		{name: "ai-account", capability: "ai-account", wantReason: "requires asset decryption"},
 		{name: "locale", capability: "locale", wantReason: "no provider shipped in v1"},
 		{name: "vendor extension", capability: "x-doolta-vpn", wantReason: "not a capability of the v0 registry"},

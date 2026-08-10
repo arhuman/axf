@@ -103,15 +103,15 @@ func TestUpReportsAMissingAlter(t *testing.T) {
 // A capability with no provider stops the activation before anything is
 // printed, and says why rather than reporting an unknown name.
 func TestUpFailsClosedOnAnUnimplementedCapability(t *testing.T) {
-	setupHome(t, "ssh-only")
-	code, stdout, stderr := run(t, "up", "ssh-only")
+	setupHome(t, "ai-only")
+	code, stdout, stderr := run(t, "up", "ai-only")
 	if code != cli.ExitError {
 		t.Errorf("exit code = %d, want %d", code, cli.ExitError)
 	}
 	if stdout != "" {
 		t.Errorf("stdout = %q, want nothing to evaluate", stdout)
 	}
-	for _, want := range []string{"provider not implemented in v1: ssh-keypair", "requires asset decryption"} {
+	for _, want := range []string{"provider not implemented in v1: ai-account", "requires asset decryption"} {
 		if !strings.Contains(stderr, want) {
 			t.Errorf("stderr = %q, want it to contain %q", stderr, want)
 		}
@@ -133,7 +133,7 @@ func TestUpDegradesOnAnUnimplementedHook(t *testing.T) {
 	if stdout != want {
 		t.Errorf("stdout =\n%s\nwant\n%s", stdout, want)
 	}
-	if !strings.Contains(stderr, "hook {capability: ssh-keypair, action: load}") {
+	if !strings.Contains(stderr, "hook {capability: ai-account, action: load}") {
 		t.Errorf("stderr = %q, want it to name the hook that did not run", stderr)
 	}
 	if strings.Contains(stderr, "shell") {

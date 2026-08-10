@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,6 +25,10 @@ const EnvBrowserProfile = "AXF_BROWSER_PROFILE"
 // names it in the audit example of section 15.
 const ActionLaunch = "launch"
 
+// ErrInvalidProfileDir reports a config.profileDir override that does not
+// resolve inside $AXF_HOME/profiles.
+var ErrInvalidProfileDir = errors.New("runtime: invalid profileDir")
+
 // BrowserProfileProvider implements the browser-profile capability by giving
 // the Alter an isolated browser profile directory, so that cookies, sessions
 // and history never cross between two Alters.
@@ -34,7 +39,9 @@ const ActionLaunch = "launch"
 //
 // engine defaults to "auto", which picks the first engine installed on the
 // host. profileDir overrides the default location,
-// $AXF_HOME/profiles/<alter>/<engine>.
+// $AXF_HOME/profiles/<alter>/<engine>, but must still resolve inside
+// $AXF_HOME/profiles: it renames the leaf, it does not escape the isolation
+// boundary that directory provides.
 //
 // Activate resolves and creates the profile directory but starts no browser.
 // Launching is the "launch" action, so an Alter opts into it with a lifecycle
@@ -151,15 +158,40 @@ func (p BrowserProfileProvider) resolve(t Target, cfg Config) (browserCommand, s
 	if err != nil {
 		return browserCommand{}, "", err
 	}
-	dir := override
-	if dir == "" {
-		dir = filepath.Join(t.Home, "profiles", t.Name, cmd.Engine)
+	dir := filepath.Join(t.Home, "profiles", t.Name, cmd.Engine)
+	if override != "" {
+		dir, err = resolveProfileDir(t.Home, override)
+		if err != nil {
+			return browserCommand{}, "", err
+		}
 	}
 	// 0o700: the profile holds the cookies and session tokens of this Alter.
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return browserCommand{}, "", fmt.Errorf("browser-profile: creating the profile directory: %w", err)
 	}
 	return cmd, dir, nil
+}
+
+// resolveProfileDir validates a config.profileDir override against
+// $AXF_HOME/profiles and returns its absolute path.
+//
+// profileDir exists to rename the leaf of the default location, not to reach
+// outside the isolation $AXF_HOME/profiles exists to provide: two Alters'
+// cookies and session tokens must never share a directory tree, and an
+// override escaping $AXF_HOME/profiles would silently defeat that guarantee
+// the way an unvalidated Alter name would defeat Store's isolation of one
+// document from another (see checkAlterName).
+func resolveProfileDir(home, override string) (string, error) {
+	abs, err := filepath.Abs(override)
+	if err != nil {
+		return "", fmt.Errorf("%w: %q: %w", ErrInvalidProfileDir, override, err)
+	}
+	base := filepath.Join(home, "profiles")
+	rel, err := filepath.Rel(base, abs)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("%w: %q must resolve inside %s", ErrInvalidProfileDir, override, base)
+	}
+	return abs, nil
 }
 
 // selectCommand returns the first installed way to start the requested engine.

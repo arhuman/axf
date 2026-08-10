@@ -103,13 +103,13 @@ func TestUp(t *testing.T) {
 // printed: a half applied identity would let the user believe a capability is
 // in place when it is not.
 func TestUpFailsClosedOnAnUnimplementedCapability(t *testing.T) {
-	home := newHome(t, "ssh-only")
-	got, err := up(t, home, "", "ssh-only", noBrowser())
+	home := newHome(t, "ai-only")
+	got, err := up(t, home, "", "ai-only", noBrowser())
 	if !errors.Is(err, runtime.ErrProviderNotImplemented) {
 		t.Fatalf("Up() error = %v, want it to wrap ErrProviderNotImplemented", err)
 	}
 	if !strings.Contains(err.Error(), "requires asset decryption") {
-		t.Errorf("Up() error = %v, want it to say why ssh-keypair has no provider", err)
+		t.Errorf("Up() error = %v, want it to say why ai-account has no provider", err)
 	}
 	if got != "" {
 		t.Errorf("script = %q, want nothing printed when activation fails", got)
@@ -124,7 +124,7 @@ func TestUpDegradesOnAnUnimplementedHook(t *testing.T) {
 	if !errors.Is(err, runtime.ErrProviderNotImplemented) {
 		t.Fatalf("Up() error = %v, want it to wrap ErrProviderNotImplemented", err)
 	}
-	if !strings.Contains(err.Error(), "ssh-keypair") {
+	if !strings.Contains(err.Error(), "ai-account") {
 		t.Errorf("Up() error = %v, want it to name the failing hook", err)
 	}
 	want := "export AXF_ALTER_NAME='hooked'\n" +
@@ -206,8 +206,8 @@ func TestDown(t *testing.T) {
 			// down must never be the command that leaves a shell stuck, so a
 			// capability it cannot resolve is reported and skipped.
 			name:     "skips a capability with no provider but still clears the rest",
-			fixtures: []string{"ssh-only"},
-			active:   "ssh-only",
+			fixtures: []string{"ai-only"},
+			active:   "ai-only",
 			want:     "unset AXF_ALTER_NAME\nunset AXF_ACTIVE_ALTER\n",
 			wantErr:  true,
 		},
@@ -252,7 +252,7 @@ func TestPreDeactivationHooksRunOnDown(t *testing.T) {
 	home := newHome(t, "hooked")
 	_, err := down(t, home, "hooked", noBrowser())
 	if !errors.Is(err, runtime.ErrProviderNotImplemented) {
-		t.Fatalf("Down() error = %v, want the ssh-keypair hook reported", err)
+		t.Fatalf("Down() error = %v, want the ai-account hook reported", err)
 	}
 }
 

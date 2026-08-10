@@ -10,9 +10,11 @@
 // This is the v1 and v1.1 layer of the roadmap (spec section 23). The Alter
 // Guard applies policies[] to the activation path and appends the audit trail
 // of spec section 15 to $AXF_HOME/audit.log; see Guard for its decision model
-// and for what it deliberately does not police. Capabilities whose provider
-// would have to decrypt an Asset, ssh-keypair and ai-account, have no
-// implementation here because this SDK performs no cryptography yet.
+// and for what it deliberately does not police. ssh-keypair decrypts the inline
+// Assets of spec section 10 with a local age identity (see SSHKeypairProvider
+// and GenerateIdentity); no other cryptography is performed, signatures above
+// all, which are still carried verbatim and never verified. ai-account has no
+// provider yet.
 package runtime
 
 import (
@@ -41,6 +43,11 @@ type Target struct {
 	Name string
 	// Home is the AXF runtime root: $AXF_HOME, or ~/.axf by default.
 	Home string
+	// Assets is assets[] of the activated document, for a provider whose
+	// capability config names one. It carries the Assets and nothing else on
+	// purpose: policies[] belong to the Alter Guard and lifecycle[] to the
+	// Runtime, neither of which is a Provider's business.
+	Assets []alter.Asset
 }
 
 // Config is the provider-defined configuration of one capabilities[] entry,
@@ -106,17 +113,18 @@ type Provider interface {
 // Registry maps canonical capability names to the provider implementing them.
 type Registry map[string]Provider
 
-// DefaultRegistry returns the providers shipped with axf v1: shell,
-// git-identity and browser-profile, the latter launching browsers through l.
+// DefaultRegistry returns the providers shipped with axf: shell, git-identity,
+// browser-profile, the latter launching browsers through l, and ssh-keypair.
 //
 // The other names of the v0 capability registry are absent on purpose.
-// ssh-keypair and ai-account would have to decrypt an Asset, and this SDK
-// performs no cryptography yet; locale has no v1 provider.
+// ai-account would need its own provider shape on top of the Asset decryption
+// ssh-keypair introduced; locale has no provider yet.
 func DefaultRegistry(l Launcher) Registry {
 	providers := []Provider{
 		ShellProvider{},
 		GitIdentityProvider{},
 		BrowserProfileProvider{Launcher: l},
+		SSHKeypairProvider{},
 	}
 	reg := make(Registry, len(providers))
 	for _, p := range providers {
@@ -140,8 +148,8 @@ func (r Registry) Lookup(capability string) (Provider, error) {
 // missingReason explains why a capability has no provider in this build.
 func missingReason(capability string) string {
 	switch capability {
-	case "ssh-keypair", "ai-account":
-		return "requires asset decryption, which this SDK does not perform yet"
+	case "ai-account":
+		return "requires asset decryption plus a provider shape of its own, not shipped yet"
 	case "":
 		return "empty capability name"
 	default:

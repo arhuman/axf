@@ -1,0 +1,16 @@
+{
+  "apiVersion": "axf/v0",
+  "kind": "Alter",
+  "metadata": {
+    "id": "urn:axf:alter:4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f80",
+    "name": "ai-only",
+    "owner": {
+      "keyType": "ed25519",
+      "publicKeyFingerprint": "sha256:4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9012a3b4c5d6e7f8091a2b3c4d5e6f7a8"
+    }
+  },
+  "capabilities": [
+    { "type": "ai-account" },
+    { "type": "shell" }
+  ]
+}

@@ -92,15 +92,23 @@ func (s Store) Load(name string) (*alter.Alter, error) {
 // reaches the filesystem, so a separator or a parent-directory element would
 // turn `axf up` into an arbitrary file read.
 func checkAlterName(name string) error {
+	return checkFileNameStem(ErrInvalidAlterName, name)
+}
+
+// checkFileNameStem rejects a name that is not a bare file name stem, reporting
+// it under kind. Every document-supplied name axf turns into a path goes through
+// it: an Alter store name (see checkAlterName) and an assets[].name reaching
+// $AXF_HOME/keys/ssh (see writeInlineKey) share the traversal exposure.
+func checkFileNameStem(kind error, name string) error {
 	switch {
 	case name == "":
-		return fmt.Errorf("%w: the name is empty", ErrInvalidAlterName)
+		return fmt.Errorf("%w: the name is empty", kind)
 	case name == "." || name == "..":
-		return fmt.Errorf("%w: %q", ErrInvalidAlterName, name)
+		return fmt.Errorf("%w: %q", kind, name)
 	case strings.ContainsAny(name, `/\`):
-		return fmt.Errorf("%w: %q contains a path separator", ErrInvalidAlterName, name)
+		return fmt.Errorf("%w: %q contains a path separator", kind, name)
 	case strings.ContainsRune(name, 0):
-		return fmt.Errorf("%w: %q contains a NUL byte", ErrInvalidAlterName, name)
+		return fmt.Errorf("%w: %q contains a NUL byte", kind, name)
 	}
 	return nil
 }

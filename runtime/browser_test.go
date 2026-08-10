@@ -151,7 +151,7 @@ func TestBrowserProfileProviderActivateDoesNotLaunch(t *testing.T) {
 
 func TestBrowserProfileProviderProfileDirOverride(t *testing.T) {
 	home := t.TempDir()
-	override := filepath.Join(home, "elsewhere")
+	override := filepath.Join(home, "profiles", "elsewhere")
 	provider := runtime.BrowserProfileProvider{
 		Launcher: &fakeLauncher{installed: []string{"firefox"}},
 		GOOS:     "linux",
@@ -165,6 +165,32 @@ func TestBrowserProfileProviderProfileDirOverride(t *testing.T) {
 	if result.Env["AXF_BROWSER_PROFILE"] != override {
 		t.Errorf("AXF_BROWSER_PROFILE = %q, want the configured override %q",
 			result.Env["AXF_BROWSER_PROFILE"], override)
+	}
+}
+
+// profileDir renames the leaf of the default location; it must not be a way
+// to point the isolated profile at a directory outside $AXF_HOME/profiles,
+// such as the user's real browser profile.
+func TestBrowserProfileProviderProfileDirRejectsEscape(t *testing.T) {
+	home := t.TempDir()
+	provider := runtime.BrowserProfileProvider{
+		Launcher: &fakeLauncher{installed: []string{"firefox"}},
+		GOOS:     "linux",
+	}
+	target := runtime.Target{Name: "alchemist", Home: home}
+
+	for _, override := range []string{
+		filepath.Join(home, "elsewhere"),           // sibling of profiles, not inside it
+		home + "/profiles/../escaped",              // climbs back out via ..
+		filepath.Join(t.TempDir(), "real-browser"), // unrelated directory entirely
+	} {
+		t.Run(override, func(t *testing.T) {
+			cfg := runtime.Config{"profileDir": json.RawMessage(`"` + override + `"`)}
+			_, err := provider.Activate(target, cfg)
+			if !errors.Is(err, runtime.ErrInvalidProfileDir) {
+				t.Errorf("Activate() error = %v, want it to wrap ErrInvalidProfileDir", err)
+			}
+		})
 	}
 }
 

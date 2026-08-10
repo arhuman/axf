@@ -28,6 +28,7 @@ Usage:
   axf up <name>            print the shell commands activating an Alter
   axf down                 print the shell commands deactivating the active Alter
   axf audit                print the Alter Guard audit trail
+  axf keys generate <name> create the decryption identity of an Alter, print its recipient
   axf validate <file>...   validate documents against the AXF v0 schema and conformance rules
   axf schema               print the embedded JSON Schema
   axf version              print build information
@@ -48,9 +49,16 @@ records the decision. Every capability action of up and down is appended to
 $AXF_HOME/audit.log, which axf audit prints. Deactivation is audited but never
 blocked, so axf down always returns a shell to a clean state.
 
-This build covers the data model, the v1 runtime (the shell, git-identity and
-browser-profile capabilities, plus lifecycle hook execution) and the v1.1 Alter
-Guard. Signature verification and Asset decryption are not implemented.
+axf keys generate writes an age identity to $AXF_HOME/keys/<name>.age and prints
+its recipient on stdout. Add that age1... line to assets[].encryption.recipients[]
+of the Alter's inline Assets by hand; nothing edits a document for you. The
+identity is scoped to one Alter and is never overwritten: rotating means removing
+the file first, which makes every Asset encrypted for it unreadable.
+
+This build covers the data model, the v1 runtime (the shell, git-identity,
+browser-profile and ssh-keypair capabilities, plus lifecycle hook execution) and
+the v1.1 Alter Guard. Inline Assets are decrypted with age; signature
+verification is not implemented.
 `
 
 // Run executes one axf invocation and returns the process exit code. args are
@@ -68,6 +76,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runDown(args[1:], stdout, stderr)
 	case "audit":
 		return runAudit(args[1:], stdout, stderr)
+	case "keys":
+		return runKeys(args[1:], stdout, stderr)
 	case "validate":
 		return runValidate(args[1:], stdout, stderr)
 	case "schema":
@@ -156,6 +166,29 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		report(stderr, "axf audit", fmt.Errorf("cli: writing the audit trail: %w", err))
 		return ExitError
 	}
+	return ExitOK
+}
+
+// runKeys creates the local decryption identity of one Alter. Only the
+// recipient reaches stdout, so `axf keys generate x | pbcopy` yields exactly the
+// line to paste into assets[].encryption.recipients[]; the path goes to stderr.
+func runKeys(args []string, stdout, stderr io.Writer) int {
+	if len(args) != 2 || args[0] != "generate" {
+		fmt.Fprintf(stderr, "axf keys: expected `axf keys generate <name>`\n\n%s", usage)
+		return ExitUsage
+	}
+	home, err := runtime.Home()
+	if err != nil {
+		report(stderr, "axf keys generate", err)
+		return ExitError
+	}
+	path, recipient, err := runtime.GenerateIdentity(home, args[1])
+	if err != nil {
+		report(stderr, "axf keys generate", err)
+		return ExitError
+	}
+	fmt.Fprintln(stdout, recipient)
+	fmt.Fprintf(stderr, "axf keys generate: identity written to %s\n", path)
 	return ExitOK
 }
 

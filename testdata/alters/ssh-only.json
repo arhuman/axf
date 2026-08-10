@@ -6,11 +6,32 @@
     "name": "ssh-only",
     "owner": {
       "keyType": "ed25519",
-      "publicKeyFingerprint": "sha256:3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9012a3b4c5d6e7f8091a2b3c4d5e6f7"
+      "publicKeyFingerprint": "sha256:3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9012a3b4c5d6e7f8091a2b3c4d5e6f7",
+      "recoveryKeyFingerprint": "sha256:9012a3b4c5d6e7f8091a2b3c4d5e6f73c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f"
     }
   },
   "capabilities": [
-    { "type": "ssh-keypair" },
+    {
+      "type": "ssh-keypair",
+      "config": { "asset": "ssh-key" }
+    },
     { "type": "shell" }
+  ],
+  "assets": [
+    {
+      "name": "ssh-key",
+      "kind": "inline",
+      "encryption": {
+        "algorithm": "age-x25519",
+        "recipients": ["{{recipient}}"],
+        "ciphertext": "{{ciphertext}}"
+      },
+      "ownerSignature": {
+        "algorithm": "ed25519",
+        "canonicalization": "JCS-RFC8785",
+        "signedAt": "2026-08-10T00:00:00Z",
+        "value": "c2lnbmF0dXJlLXBsYWNlaG9sZGVy"
+      }
+    }
   ]
 }

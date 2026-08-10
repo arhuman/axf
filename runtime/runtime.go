@@ -84,7 +84,7 @@ func (r *Runtime) Up(name string, out io.Writer) error {
 		return fmt.Errorf("runtime: activating %q: %w", name, err)
 	}
 
-	target := Target{Name: name, Home: r.Store.Home}
+	target := Target{Name: name, Home: r.Store.Home, Assets: doc.Assets}
 	var s script
 	var soft []error
 	if r.Active != "" && r.Active != name {
@@ -146,7 +146,7 @@ func (r *Runtime) teardown(name string, s *script) []error {
 	} else {
 		guard := r.guardFor(doc)
 		hooks := hooksOf(doc)
-		target := Target{Name: name, Home: r.Store.Home}
+		target := Target{Name: name, Home: r.Store.Home, Assets: doc.Assets}
 		soft = append(soft, r.recordHooks(guard, hooks.PreDeactivation)...)
 		soft = append(soft, r.runHooks(target, doc, hooks.PreDeactivation)...)
 		for _, capability := range doc.Capabilities {
