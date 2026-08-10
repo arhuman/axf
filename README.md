@@ -148,6 +148,10 @@ It deliberately does not implement later milestones:
 - this build has no CLI command producing ciphertext for inline Assets
 - the `ai-account` capability has no provider
 
+For how the runtime, providers and capabilities fit together internally
+(no daemon, one process per invocation, the Provider contract, the Alter
+Guard's decision model), see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ## CLI
 
 ```sh
@@ -350,7 +354,9 @@ testdata/alters/        Alter documents the runtime tests activate
 The importable API is the root `alter` package, `conformance` and `runtime`.
 Everything under `internal/` is CLI wiring and carries no compatibility promise.
 `runtime.Provider` is the extension point of spec section 3: the format names a
-capability, a provider decides how it is honoured on a given platform.
+capability, a provider decides how it is honoured on a given platform. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces under
+`runtime/` fit together.
 
 ### Fixtures
 
