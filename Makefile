@@ -21,7 +21,7 @@ BUILD_DATE := $(shell git show -s --format=%cI HEAD 2>/dev/null || date -u +%Y-%
 VPKG       := github.com/arhuman/axf/internal/version
 LDFLAGS    := -ldflags "-X $(VPKG).Version=$(VERSION) -X $(VPKG).GitCommit=$(COMMIT) -X $(VPKG).BuildDate=$(BUILD_DATE)"
 
-.PHONY: audit build clean cover help install test tidy tools
+.PHONY: audit build ci clean cover help install release test tidy tools
 
 # First target is the default (`make` == `make build`).
 ## build: compile the axf binary (cgo-free) into bin/
@@ -35,6 +35,9 @@ audit:
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION) run
 	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 	$(MAKE) cover
+
+## ci: full local pipeline (tidy + audit), the gate make release runs
+ci: tidy audit
 
 ## clean: remove build artifacts
 clean:
@@ -53,6 +56,10 @@ cover:
 ## install: install the axf binary into GOBIN (cgo-free)
 install:
 	CGO_ENABLED=0 go install $(LDFLAGS) $(CMD)
+
+## release: cut and publish a release (derive version, stamp CHANGELOG, tag, push)
+release:
+	@./scripts/release.sh
 
 ## test: run all tests with the race detector
 test:

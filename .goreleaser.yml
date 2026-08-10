@@ -1,0 +1,73 @@
+# goreleaser v2 config. Builds, checksums, SBOMs and signs bin/axf on a v* tag.
+version: 2
+
+project_name: axf
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: axf
+    main: ./cmd/axf
+    binary: axf
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      # Keep the -X package path in sync with the Makefile's VPKG.
+      - -s -w
+      - -X github.com/arhuman/axf/internal/version.Version={{ .Version }}
+      - -X github.com/arhuman/axf/internal/version.GitCommit={{ .ShortCommit }}
+      - -X github.com/arhuman/axf/internal/version.BuildDate={{ .Date }}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+# Satisfies the standard's supply_chain.sign_sbom check. Both need a tool on
+# PATH in CI: syft (SBOM) and cosign (signing), see release.yml.
+sboms:
+  - artifacts: archive
+
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sig"
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - --output-signature=${signature}
+      - --output-certificate=${certificate}
+      - ${artifact}
+      - --yes
+    artifacts: checksum
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+
+release:
+  draft: false
+  prerelease: auto

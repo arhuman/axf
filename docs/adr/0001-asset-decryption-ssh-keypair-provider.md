@@ -1,10 +1,9 @@
-# 1. Asset decryption and the ssh-keypair provider
+---
+status: accepted
+date: 2026-08-10
+---
 
-Date: 2026-08-10
-
-## Status
-
-Accepted
+# Asset decryption and the ssh-keypair provider
 
 ## Context
 
@@ -139,9 +138,8 @@ code, not through a CLI command this pass does not add.
 
 ## References
 
-- `axf-v0-spec.md` sections 3, 7, 8, 10, 14, 23 (this repository's spec is the
-  private working doc at `~/.claude/doc/axf-v0-spec.md`, not checked into this
-  repository).
+- The AXF v0 spec, sections 3, 7, 8, 10, 14, 23 (working document, not checked
+  into this repository).
 - `runtime/browser.go` (`BrowserProfileProvider`) for the existing per-Alter
   isolated-directory pattern this ADR mirrors.
 - [filippo.io/age](https://pkg.go.dev/filippo.io/age)
