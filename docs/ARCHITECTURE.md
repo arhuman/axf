@@ -193,8 +193,10 @@ into an explanation rather than a bare lookup failure.
 
 ## What this document does not cover
 
-- The AXF format itself: types, JSON Schema, conformance rules. See the
-  root `alter` package doc comment and `README.md`'s SDK section.
+- The AXF format itself: the normative spec is [docs/SPEC.md](SPEC.md); see
+  also the root `alter` package doc comment and `README.md`'s SDK section
+  for how this repository's types, JSON Schema and conformance rules
+  implement it.
 - Feature-specific design decisions: see `docs/adr/`. ADR 0001 is a worked
   example of one (asset decryption and the `ssh-keypair` provider),
   including alternatives considered and rejected.

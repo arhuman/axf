@@ -134,7 +134,7 @@ make targets, and the commit-message convention.
 
 ## 4. Architecture and what AXF is (what)
 
-AXF (Alter eXtensible Format) is an open JSON specification for describing an Alter, a coherent operational identity. The format is meant to be shared across independent tools, so that multiple applications can read, create, validate, and run the same identity document. AXF aims to play the role for a digital identity that OpenAPI plays for an API, or OCI for a container: one reference specification, several independent implementations.
+AXF (Alter eXtensible Format) is an open JSON specification for describing an Alter, a coherent operational identity. The format is meant to be shared across independent tools, so that multiple applications can read, create, validate, and run the same identity document. AXF aims to play the role for a digital identity that OpenAPI plays for an API, or OCI for a container: one reference specification, several independent implementations. See [docs/SPEC.md](docs/SPEC.md) for the full specification this repository implements.
 
 This repository provides:
 

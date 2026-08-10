@@ -145,8 +145,7 @@ shared-document import, or Key Event Log reconciliation.
 
 ## References
 
-- The AXF v0 spec, sections 3, 7, 8, 10, 14, 23 (working document, not checked
-  into this repository).
+- [`docs/SPEC.md`](../SPEC.md), sections 3, 7, 8, 10, 14, 23.
 - `runtime/browser.go` (`BrowserProfileProvider`) for the existing per-Alter
   isolated-directory pattern this ADR mirrors.
 - [filippo.io/age](https://pkg.go.dev/filippo.io/age)

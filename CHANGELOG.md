@@ -24,3 +24,4 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Alter document loading and inline Asset decryption now reject oversized
   input (a document over 16 MiB, an encrypted asset's ciphertext over 2 MiB,
   or decrypted content over 1 MiB) instead of reading it unbounded.
+- `docs/SPEC.md`: the full AXF v0 specification.
