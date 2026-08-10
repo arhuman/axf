@@ -25,6 +25,46 @@ func parseFixture(t *testing.T, rel string) *alter.Alter {
 	return doc
 }
 
+func TestParseAndCheck(t *testing.T) {
+	t.Run("valid document", func(t *testing.T) {
+		data, err := os.ReadFile(filepath.Join(fixtureDir, "valid/minimal.json"))
+		if err != nil {
+			t.Fatalf("reading fixture: %v", err)
+		}
+		doc, err := conformance.ParseAndCheck(data)
+		if err != nil {
+			t.Fatalf("ParseAndCheck = %v, want nil", err)
+		}
+		if doc == nil {
+			t.Fatal("ParseAndCheck returned a nil document alongside a nil error")
+		}
+	})
+
+	t.Run("malformed JSON fails at Parse, before Check ever runs", func(t *testing.T) {
+		doc, err := conformance.ParseAndCheck([]byte("not json"))
+		if err == nil {
+			t.Fatal("ParseAndCheck = nil, want a parse error")
+		}
+		if doc != nil {
+			t.Errorf("ParseAndCheck returned a non-nil document alongside an error: %v", doc)
+		}
+	})
+
+	t.Run("schema-valid but non-conformant document fails at Check", func(t *testing.T) {
+		data, err := os.ReadFile(filepath.Join(fixtureDir, "invalid/duplicate-asset-name.json"))
+		if err != nil {
+			t.Fatalf("reading fixture: %v", err)
+		}
+		doc, err := conformance.ParseAndCheck(data)
+		if !errors.Is(err, conformance.ErrDuplicateAssetName) {
+			t.Fatalf("ParseAndCheck = %v, want an error matching ErrDuplicateAssetName", err)
+		}
+		if doc != nil {
+			t.Errorf("ParseAndCheck returned a non-nil document alongside an error: %v", doc)
+		}
+	})
+}
+
 // TestCheckFixtures is the spec section 17 format suite: every fixture an AXF
 // implementation must classify identically.
 func TestCheckFixtures(t *testing.T) {

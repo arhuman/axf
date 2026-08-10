@@ -139,6 +139,7 @@ func writeInlineKey(t Target, asset alter.Asset) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("ssh-keypair: %w", err)
 	}
+	defer zero(plaintext)
 	path := filepath.Join(t.Home, "keys", "ssh", t.Name, asset.Name)
 	if err := writeSecret(path, plaintext, os.O_TRUNC); err != nil {
 		return "", fmt.Errorf("ssh-keypair: inline asset %q: %w", asset.Name, err)

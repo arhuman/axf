@@ -23,6 +23,21 @@ var ErrDuplicateAssetName = errors.New("conformance: duplicate asset name")
 // ErrNilAlter reports a nil document passed to Check.
 var ErrNilAlter = errors.New("conformance: nil alter")
 
+// ParseAndCheck parses data with alter.Parse, then applies Check to the
+// result: the two-step sequence, schema validation followed by the rules the
+// schema cannot express, that every caller needs. It exists so a third caller
+// reuses one named contract instead of re-deriving the same two lines.
+func ParseAndCheck(data []byte) (*alter.Alter, error) {
+	doc, err := alter.Parse(data)
+	if err != nil {
+		return nil, err
+	}
+	if err := Check(doc); err != nil {
+		return nil, err
+	}
+	return doc, nil
+}
+
 // Check applies the AXF v0 conformance rules that are not expressible in JSON
 // Schema. It returns nil for a conformant Alter, or a joined error listing
 // every violation found; use errors.Is against the exported sentinels to test

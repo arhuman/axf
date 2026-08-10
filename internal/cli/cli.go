@@ -232,11 +232,8 @@ func validateFile(path string, stdout io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("cli: reading %s: %w", path, err)
 	}
-	doc, err := alter.Parse(data)
+	doc, err := conformance.ParseAndCheck(data)
 	if err != nil {
-		return err
-	}
-	if err := conformance.Check(doc); err != nil {
 		return err
 	}
 	for _, warning := range conformance.Warnings(doc) {

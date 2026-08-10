@@ -8,6 +8,7 @@ linters:
   enable:
     - bodyclose
     - contextcheck
+    - gocyclo
     - gosec
     - govet
     - noctx
@@ -15,6 +16,13 @@ linters:
     - sqlclosecheck
     - staticcheck
   settings:
+    gocyclo:
+      # Generous starting ceiling: today's max in production code is 12
+      # ((*Runtime).Up), measured by `gocyclo`. This project's own target is
+      # <=10; the gap is tracked, not silently accepted, but a hard floor at
+      # exactly today's max would fail the build on a config-only PR. Tighten
+      # as Runtime.Up is split or the codebase settles.
+      min-complexity: 15
     staticcheck:
       checks:
         - "all"
@@ -29,6 +37,11 @@ linters:
       - path: _test\.go
         linters:
           - gosec
+      # Table-driven tests legitimately run long and branchy; gocyclo targets
+      # production code (TestParseCanonicalInstanceFields alone measures 34).
+      - path: _test\.go
+        linters:
+          - gocyclo
 
 formatters:
   enable:

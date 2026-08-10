@@ -74,7 +74,11 @@ func appendAudit(path string, e AuditEvent) error {
 	}
 	line = append(line, '\n')
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o750); err != nil {
+	// 0o700, matching every other directory under $AXF_HOME (keys/, profiles/):
+	// activation metadata (which Alter, which capability, when) is not a secret
+	// value, but the project's own per-Alter isolation posture doesn't carve out
+	// an exception for it either.
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("runtime: creating %s: %w", dir, err)
 	}
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) //nolint:gosec // G304: path is Home+"audit.log", no variable component

@@ -31,6 +31,17 @@ git config core.hooksPath .githooks
 | `make install` | Install `bin/axf` into `GOBIN`. |
 | `make clean` | Remove build and coverage artifacts. |
 
+## Test layout
+
+Tests are colocated 1:1 with the source they test (`x.go` alongside
+`x_test.go`). Three files are the deliberate exception: `alter.go`,
+`runtime/audit.go` and `runtime/script.go` have no same-named test file
+because their behavior is exercised through other tests instead
+(`schema_test.go`, `extensions_test.go` and `conformance_test.go` for
+`alter.go`; `runtime/guard_test.go`, `runtime_test.go` and
+`helpers_test.go` for `audit.go` and `script.go`). New source files should
+still follow the 1:1 convention; these three predate it.
+
 ## Commit messages
 
 [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): subject`, type one of

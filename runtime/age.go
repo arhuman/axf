@@ -25,6 +25,12 @@ var ErrNoIdentity = errors.New("runtime: no decryption identity")
 // ErrDecrypt reports an inline Asset that could not be decrypted.
 var ErrDecrypt = errors.New("runtime: cannot decrypt asset")
 
+// maxAssetPlaintext bounds how much decrypted content DecryptAsset reads into
+// memory. Every inline Asset this build produces a provider for (ssh-keypair)
+// holds a private key, at most a few KB; 1 MiB is generous headroom for that
+// while still bounding a malformed or oversized ciphertext.
+const maxAssetPlaintext = 1 << 20
+
 // IdentityPath returns the age identity file of one Alter,
 // $AXF_HOME/keys/<name>.age.
 //
@@ -120,11 +126,26 @@ func DecryptAsset(asset alter.Asset, identities []age.Identity, source string) (
 		}
 		return nil, fmt.Errorf("%w %q with the identities in %s: %w", ErrDecrypt, asset.Name, source, err)
 	}
-	plaintext, err := io.ReadAll(r)
+	plaintext, err := io.ReadAll(io.LimitReader(r, maxAssetPlaintext+1))
 	if err != nil {
 		return nil, fmt.Errorf("%w %q with the identities in %s: %w", ErrDecrypt, asset.Name, source, err)
 	}
+	if len(plaintext) > maxAssetPlaintext {
+		return nil, fmt.Errorf("%w %q: decrypted content exceeds %d bytes, larger than any AXF v0 asset is expected to be",
+			ErrDecrypt, asset.Name, maxAssetPlaintext)
+	}
 	return plaintext, nil
+}
+
+// zero overwrites b with zero bytes: best-effort defense in depth so a
+// decrypted secret does not linger in memory longer than necessary. It is not
+// a guarantee: the Go runtime may already have copied b during garbage
+// collection, and this process's memory can still be swapped to disk or
+// captured by a core dump regardless.
+func zero(b []byte) {
+	for i := range b {
+		b[i] = 0
+	}
 }
 
 // writeSecret writes data at path with mode 0o600 under a 0o700 parent, the

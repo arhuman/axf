@@ -78,11 +78,8 @@ func (s Store) Load(name string) (*alter.Alter, error) {
 		}
 		return nil, fmt.Errorf("runtime: reading %s: %w", path, err)
 	}
-	doc, err := alter.Parse(data)
+	doc, err := conformance.ParseAndCheck(data)
 	if err != nil {
-		return nil, fmt.Errorf("runtime: %s: %w", path, err)
-	}
-	if err := conformance.Check(doc); err != nil {
 		return nil, fmt.Errorf("runtime: %s: %w", path, err)
 	}
 	return doc, nil
