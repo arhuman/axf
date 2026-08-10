@@ -40,7 +40,7 @@ footguns, and its identity/recipient text format is exactly what
 `AGE-SECRET-KEY-1...` line) per Alter store name, directory mode `0o700`, file
 mode `0o600`. Scoped per Alter name rather than one global identity, for the
 same reason the owner and recovery keys are scoped per Alter (spec section
-3, "Identité scopée par Alter"): a single shared decryption identity across
+3's Alter-scoped identity principle): a single shared decryption identity across
 Alters would let anything holding it correlate them. A new `axf keys generate
 <name>` subcommand creates one and prints its recipient (`age1...`) for the
 user to add to `assets[].encryption.recipients[]` by hand; nothing generates
@@ -65,8 +65,8 @@ what a provider requires to make sense of it).
 **kind: ref vs kind: inline**: `ref` is treated as an existing private key
 path already on disk (`assets[].uri`, validated to exist and be a regular
 file), no decryption involved: this is the `Store`/`Keychain`-agnostic
-posture consistent with `ref` elsewhere in the spec ("pointeur vers un store
-externe déjà géré", section 10). `inline` is decrypted with the local
+posture consistent with `ref` elsewhere in the spec (a pointer to an
+already-managed external store, section 10). `inline` is decrypted with the local
 identity at `$AXF_HOME/keys/<alterName>.age` against
 `assets[].encryption.recipients[]`, and the plaintext is written to
 `$AXF_HOME/keys/ssh/<alterName>/<assetName>`, mode `0o600`, parent directory

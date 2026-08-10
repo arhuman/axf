@@ -77,7 +77,7 @@ func appendAudit(path string, e AuditEvent) error {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("runtime: creating %s: %w", dir, err)
 	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) //nolint:gosec // G304: path is Home+"audit.log", no variable component
 	if err != nil {
 		return fmt.Errorf("runtime: opening the audit log %s: %w", path, err)
 	}

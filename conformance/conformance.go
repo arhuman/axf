@@ -57,15 +57,27 @@ func duplicateAssetNames(assets []alter.Asset) []error {
 }
 
 // Warnings returns the non-blocking advisories the AXF v0 SDK contract requires
-// (spec sections 8 and 17). An inline Asset held by an Alter without a recovery
-// key fingerprint is unrecoverable if the owner key is lost, which warrants a
-// warning but never a rejection: the document stays valid.
+// (spec sections 8, 11 and 17): an inline Asset held by an Alter without a
+// recovery key fingerprint, and a deny policy that sets no explicit scope.
+// Both stay warnings, never rejections: the document remains valid either way.
 //
 // Warnings returns nil for a nil Alter.
 func Warnings(a *alter.Alter) []string {
 	if a == nil {
 		return nil
 	}
+	var warnings []string
+	warnings = append(warnings, inlineAssetsWithoutRecoveryKey(a)...)
+	warnings = append(warnings, denyPoliciesWithoutExplicitScope(a)...)
+	return warnings
+}
+
+// inlineAssetsWithoutRecoveryKey warns on every inline Asset of an Alter that
+// has no recovery key configured: losing the owner key makes such an Asset
+// permanently undecryptable (spec section 8). A configured recovery key
+// clears every inline Asset at once, since the recovery path covers the whole
+// Alter rather than one Asset at a time.
+func inlineAssetsWithoutRecoveryKey(a *alter.Alter) []string {
 	if a.Metadata.Owner != nil && a.Metadata.Owner.RecoveryKeyFingerprint != "" {
 		return nil
 	}
@@ -77,6 +89,28 @@ func Warnings(a *alter.Alter) []string {
 		warnings = append(warnings, fmt.Sprintf(
 			"inline asset %q has no recovery key: metadata.owner.recoveryKeyFingerprint is unset, "+
 				"so losing the owner key makes this asset permanently undecryptable", asset.Name))
+	}
+	return warnings
+}
+
+// denyPoliciesWithoutExplicitScope warns on every policies[] entry whose
+// effect is deny and whose scope is unset. The schema default, guard, only
+// observes and never blocks: a deny with no explicit scope reads as an
+// enforced rule but silently does neither, unless the operator opts in with
+// "scope": "runtime". The Alter Guard itself applies this default correctly
+// (spec section 11); this warning exists because a plain reading of "effect:
+// deny" invites the opposite assumption, and nothing else in the tooling
+// flags the gap between the two.
+func denyPoliciesWithoutExplicitScope(a *alter.Alter) []string {
+	var warnings []string
+	for i, policy := range a.Policies {
+		if policy.Effect != alter.EffectDeny || policy.Scope != "" {
+			continue
+		}
+		warnings = append(warnings, fmt.Sprintf(
+			"policies[%d] denies {capability: %q, action: %q} but sets no explicit scope: it defaults "+
+				"to scope \"guard\" (observe only) and does not block the action; add \"scope\": "+
+				"\"runtime\" if blocking is intended", i, policy.Capability, policy.Action))
 	}
 	return warnings
 }

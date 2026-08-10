@@ -70,7 +70,7 @@ func (s Store) Load(name string) (*alter.Alter, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: AlterPath already ran name through checkAlterName
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("%w: no Alter named %q in $AXF_HOME/alters (looked for %s)",

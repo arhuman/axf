@@ -48,7 +48,10 @@ func (ExecLauncher) Available(probe string) bool {
 func (ExecLauncher) Launch(name string, args []string) error {
 	// A context that is never cancelled: cancelling would kill the browser,
 	// which must outlive this process.
-	cmd := exec.CommandContext(context.Background(), name, args...)
+	// name is always a literal from the fixed browserCommand table in
+	// browser.go (never document-controlled); args are those literals plus a
+	// traversal-checked profile directory.
+	cmd := exec.CommandContext(context.Background(), name, args...) //nolint:gosec // G204: name is a fixed, non-document-controlled literal
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("runtime: starting %s: %w", name, err)
 	}

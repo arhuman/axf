@@ -153,7 +153,7 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		return ExitError
 	}
 	path := runtime.Store{Home: home}.AuditPath()
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: path is Home+"audit.log", no variable component
 	switch {
 	case errors.Is(err, os.ErrNotExist):
 		fmt.Fprintf(stderr, "axf audit: no audit trail yet (%s)\n", path)
@@ -225,8 +225,10 @@ func runValidate(paths []string, stdout, stderr io.Writer) int {
 	return code
 }
 
+// validateFile reads an operator-named local file, `axf validate <file>`'s
+// entire purpose, the same trust model as `cat` or `jq`.
 func validateFile(path string, stdout io.Writer) error {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: path is a CLI argument by design, see doc comment
 	if err != nil {
 		return fmt.Errorf("cli: reading %s: %w", path, err)
 	}

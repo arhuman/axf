@@ -8,6 +8,7 @@ linters:
   enable:
     - bodyclose
     - contextcheck
+    - gosec
     - govet
     - noctx
     - revive
@@ -18,6 +19,16 @@ linters:
       checks:
         - "all"
         - "-ST1000"
+
+  exclusions:
+    rules:
+      # Fixture/test-helper paths are built from test-controlled constants and
+      # table-driven literals (t.TempDir(), "../testdata/fixtures" + a name from
+      # the test's own table), never from anything reaching the binary at
+      # runtime; gosec's G304/G703 taint tracking cannot see that boundary.
+      - path: _test\.go
+        linters:
+          - gosec
 
 formatters:
   enable:

@@ -72,7 +72,9 @@ func GenerateIdentity(home, name string) (path, recipient string, err error) {
 // LoadIdentities reads the age identities held at path. A missing or empty file
 // yields an error wrapping ErrNoIdentity that names the path looked at.
 func LoadIdentities(path string) ([]age.Identity, error) {
-	f, err := os.Open(path)
+	// path is always IdentityPath(home, name/t.Name), and name has already
+	// passed checkAlterName before reaching here (see Store.Load's ordering).
+	f, err := os.Open(path) //nolint:gosec // G304: name is traversal-checked upstream
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("%w at %s", ErrNoIdentity, path)
@@ -133,7 +135,10 @@ func writeSecret(path string, data []byte, flag int) error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("runtime: creating %s: %w", dir, err)
 	}
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|flag, 0o600)
+	// Every caller of writeSecret has already validated path's variable
+	// component (IdentityPath's name via checkAlterName, an Asset name via
+	// checkFileNameStem in sshkeypair.go) before reaching here.
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|flag, 0o600) //nolint:gosec // G304: name is traversal-checked upstream
 	if err != nil {
 		return fmt.Errorf("runtime: writing %s: %w", path, err)
 	}

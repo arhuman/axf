@@ -133,3 +133,38 @@ func TestWarningsOnlyCoverInlineAssets(t *testing.T) {
 		t.Errorf("Warnings = %v, want nil once a recovery key is configured", got)
 	}
 }
+
+func TestWarningsFlagsADenyPolicyWithNoExplicitScope(t *testing.T) {
+	doc := &alter.Alter{
+		Policies: []alter.Policy{
+			{Capability: "browser-profile", Action: "launch", Effect: alter.EffectDeny},
+		},
+	}
+	warnings := conformance.Warnings(doc)
+	if len(warnings) != 1 {
+		t.Fatalf("Warnings = %v, want exactly one for the scope-less deny policy", warnings)
+	}
+
+	// An explicit scope, guard or runtime, is an informed choice: the warning
+	// exists for the unstated default, not for observe-only itself.
+	doc.Policies[0].Scope = alter.ScopeGuard
+	if got := conformance.Warnings(doc); got != nil {
+		t.Errorf("Warnings = %v, want nil once scope: guard is explicit", got)
+	}
+
+	doc.Policies[0].Scope = alter.ScopeRuntime
+	if got := conformance.Warnings(doc); got != nil {
+		t.Errorf("Warnings = %v, want nil once scope: runtime is explicit", got)
+	}
+}
+
+func TestWarningsIgnoresAllowPoliciesAndUnscopedNonDenyEntries(t *testing.T) {
+	doc := &alter.Alter{
+		Policies: []alter.Policy{
+			{Capability: "shell", Action: "activate", Effect: alter.EffectAllow},
+		},
+	}
+	if got := conformance.Warnings(doc); got != nil {
+		t.Errorf("Warnings = %v, want nil: an allow policy is never the finding, whatever its scope", got)
+	}
+}
